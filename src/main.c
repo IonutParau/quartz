@@ -1,0 +1,73 @@
+#include <stdio.h>
+
+// to get LSP to sybau
+#include "quartz.h"
+#include "lexer.h"
+#include "parser.h"
+
+#define QUARTZ_USE_LIBC
+#include "one.c"
+
+int main(int argc, char **argv) {
+	size_t cSize = quartz_sizeOfContext();
+	char cMem[cSize];
+	quartz_Context *ctx = (quartz_Context*)(void *)cMem;
+	quartz_initContext(ctx, NULL);
+	quartz_Thread *Q = quartz_newThread(ctx);
+	printf("Thread: %p\n", Q);
+	printf("Memory Usage: %zu\n", quartz_gcCount(Q));
+
+	quartz_Buffer buf;
+	quartz_bufinit(Q, &buf, 1024);
+	quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
+	quartz_bufputs(&buf, "# comment\n");
+	quartz_bufputs(&buf, "local x = 53\n");
+	quartz_bufputs(&buf, "local y = (21 + 2i)\n");
+	quartz_bufputs(&buf, "local z = \"hi\"\n");
+	quartz_bufputs(&buf, "io[\"writeln\"](x + y, z)\n");
+
+	char *s = quartz_bufstr(&buf, NULL);
+
+	printf("Code:\n%s\n", s);
+	quartz_Token tok;
+	size_t off = 0;
+	while(true) {
+		quartz_TokenError err = quartzI_lexAt(s, off, &tok);
+		if(err) {
+			printf("Error:%zu: %s\n", 1+quartzI_countLines(s, off), quartzI_lexErrors[err]);
+			return 1;
+		}
+		printf("0x%04zX %d %zu %.*s\n", off, tok.tt, tok.len, (int)tok.len, tok.s);
+		off += tok.len;
+		if(tok.tt == QUARTZ_TOK_EOF) break;
+	}
+
+	quartz_Node *ast = quartzI_allocAST(Q, QUARTZ_NODE_PROGRAM, 0, "", 0);
+	quartz_bufreset(&buf);
+	quartz_Parser p;
+	quartzP_initParser(Q, &p, s);
+	if(quartzP_parse(Q, &p, ast)) {
+		printf("Error %zu: ", p.errloc);
+		if(p.pErr == QUARTZ_PARSE_ELEX) {
+			printf("%s", quartzI_lexErrors[p.lexErr]);
+		} else if(p.pErr == QUARTZ_PARSE_EINT) {
+			printf("internal error");
+		} else if(p.pErr == QUARTZ_PARSE_EEXPR) {
+			printf("expected expression");
+		} else if(p.pErr == QUARTZ_PARSE_ESTMT) {
+			printf("expected statement");
+		} else if(p.pErr == QUARTZ_PARSE_EBADTOK) {
+			printf("expected %s", p.tokExpected);
+		}
+		printf("\n");
+	}
+	quartzI_dumpAST(&buf, ast);
+
+	printf("%.*s\n", (int)buf.len, buf.buf);
+	quartzI_freeAST(Q, ast);
+	quartz_bufdestroy(&buf);
+	quartz_strfree(Q, s);
+	printf("Peak Memory Usage: %zu\n", quartz_gcPeak(Q));
+	quartz_destroyThread(Q);
+	return 0;
+}

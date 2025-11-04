@@ -1,0 +1,8 @@
+#include "context.c"
+#include "gc.c"
+#include "state.c"
+#include "utils.c"
+#include "value.c"
+#include "buf.c"
+#include "lexer.c"
+#include "parser.c"
