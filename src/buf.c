@@ -1,5 +1,6 @@
 #include "quartz.h"
 #include "utils.h"
+#include <stdarg.h>
 
 quartz_Errno quartz_bufinit(quartz_Thread *Q, quartz_Buffer *buf, size_t cap) {
 	buf->Q = Q;
@@ -54,20 +55,41 @@ quartz_Errno quartz_bufputls(quartz_Buffer *buf, const char *s, size_t len) {
 	return QUARTZ_OK;
 }
 
+quartz_Errno quartz_bufputp(quartz_Buffer *buf, const void *p) {
+	quartz_Errno err;
+	// we assume 8 bits per byte here, not ideal
+	size_t ptrSize = sizeof(p) * 2;
+
+	err = quartz_bufputs(buf, "0x");
+	if(err) return err;
+
+	err = quartz_bufputux(buf, (quartz_Uint)p, 16, ptrSize, true);
+
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartz_bufputn(quartz_Buffer *buf, quartz_Int n) {
 	return quartz_bufputnx(buf, n, 10, 0, false);
 }
 
 quartz_Errno quartz_bufputnx(quartz_Buffer *buf, quartz_Int n, size_t base, size_t minDigits, bool zeroed) {
-	// 2^128 <= 2^64 so fuck off Rust devs
-	char digits[128];
-	size_t digitlen = 0;
-	
 	if(n < 0) {
 		n = -n;
 		quartz_Errno err = quartz_bufputc(buf, '-');
 		if(err) return err;
 	}
+
+	return quartz_bufputux(buf, n, base, minDigits, zeroed);
+}
+
+quartz_Errno quartz_bufputu(quartz_Buffer *buf, quartz_Uint n) {
+	return quartz_bufputux(buf, n, 10, 0, false);
+}
+
+quartz_Errno quartz_bufputux(quartz_Buffer *buf, quartz_Uint n, size_t base, size_t minDigits, bool zeroed) {
+	// 2^128 <= 2^64 so fuck off Rust devs
+	char digits[128];
+	size_t digitlen = 0;
 
 	while(n > 0) {
 		const char *a = "0123456789abcdef";
@@ -89,6 +111,99 @@ quartz_Errno quartz_bufputnx(quartz_Buffer *buf, quartz_Int n, size_t base, size
 	}
 
 	return quartz_bufputls(buf, digits, digitlen);
+}
+
+quartz_Errno quartz_bufputf(quartz_Buffer *buf, const char *fmt, ...) {
+	va_list list;
+	va_start(list, fmt);
+
+	quartz_Errno err = quartz_bufputfv(buf, fmt, list);
+
+	va_end(list);
+	return err;
+}
+
+// see quartz_bufputf for format specifier details
+quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) {
+	quartz_Errno err;
+	quartz_FormatData data;
+	while(*fmt) {
+		char c = *fmt;
+		fmt++;
+		if(c == '%') {
+			quartzI_parseFormatter(fmt, &data);
+			if(data.len == 0) break; // uhoh stinky
+			// get runtime known mins and maxs
+			if(data.min < 0) {
+				data.min = va_arg(args, quartz_Uint);
+			}
+			if(data.max < 0) {
+				data.max = va_arg(args, quartz_Uint);
+			}
+			// %f and %C are currently not implemented :pensive:
+			if(data.d == 'p') {
+				void *p = va_arg(args, void *);
+				err = quartz_bufputp(buf, p);
+				if(err) return err;
+			}
+			if(data.d == 's') {
+				// TODO: lstring stuff
+				const char *s = va_arg(args, const char *);
+				err = quartz_bufputs(buf, s);
+				if(err) return err;
+			}
+			if(data.d == 'd') {
+				quartz_Int d = va_arg(args, quartz_Int);
+				err = quartz_bufputnx(buf, d, 10, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'u') {
+				quartz_Uint d = va_arg(args, quartz_Uint);
+				err = quartz_bufputux(buf, d, 10, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'x') {
+				quartz_Int d = va_arg(args, quartz_Int);
+				err = quartz_bufputnx(buf, d, 16, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'X') {
+				quartz_Uint d = va_arg(args, quartz_Uint);
+				err = quartz_bufputux(buf, d, 16, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'o') {
+				quartz_Int d = va_arg(args, quartz_Int);
+				err = quartz_bufputnx(buf, d, 8, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'O') {
+				quartz_Uint d = va_arg(args, quartz_Uint);
+				err = quartz_bufputux(buf, d, 8, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'b') {
+				quartz_Int d = va_arg(args, quartz_Int);
+				err = quartz_bufputnx(buf, d, 2, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'B') {
+				quartz_Uint d = va_arg(args, quartz_Uint);
+				err = quartz_bufputux(buf, d, 2, data.min, data.minZeroed);
+				if(err) return err;
+			}
+			if(data.d == 'c') {
+				char c = va_arg(args, int);
+				err = quartz_bufputc(buf, c);
+				if(err) return err;
+			}
+			fmt += data.len;
+		} else {
+			err = quartz_bufputc(buf, c);	
+			if(err) return err;
+		}
+	}
+	return QUARTZ_OK;
 }
 
 size_t quartz_bufcount(quartz_Buffer *buf) {

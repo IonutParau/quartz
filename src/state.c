@@ -5,16 +5,21 @@
 
 quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	size_t defaultStackSize = 64;
+	size_t defaultCallSize = 8;
 
 	// TODO: handle OOMs
 
 	quartz_GlobalState *gState = quartz_rawAlloc(ctx, sizeof(*gState));
 	quartz_StackEntry *stack = quartz_rawAlloc(ctx, sizeof(*stack) * defaultStackSize);
+	quartz_CallEntry *call = quartz_rawAlloc(ctx, sizeof(*call) * defaultCallSize);
 	quartz_Thread *Q = quartz_rawAlloc(ctx, sizeof(*Q));
-	Q->stack = stack;
 	Q->gState = gState;
-	Q->stackCap = defaultStackSize;
+	Q->stack = stack;
 	Q->stackLen = 0;
+	Q->stackCap = defaultStackSize;
+	Q->call = call;
+	Q->callLen = 0;
+	Q->callCap = defaultCallSize;
 	Q->resumedBy = NULL;
 	Q->resuming = NULL;
 
@@ -123,3 +128,33 @@ double quartz_clock(quartz_Thread *Q) {
 size_t quartz_time(quartz_Thread *Q) {
 	return quartz_rawTime(&Q->gState->context);
 }
+
+void quartz_clearerror(quartz_Thread *Q) {
+	Q->gState->errorValue.type = QUARTZ_VNULL;
+}
+
+// pop value and error
+quartz_Errno quartz_error(quartz_Thread *Q);
+// raise formatted string
+quartz_Errno quartz_errorfv(quartz_Thread *Q, const char *fmt, va_list args);
+// raise formatted string
+quartz_Errno quartz_errorf(quartz_Thread *Q, const char *fmt, ...);
+// specialized function for OOMs
+quartz_Errno quartz_oom(quartz_Thread *Q);
+// generic function for errnos.
+// If you error out as QUARTZ_ERUNTIME, it will simply error out a generic runtime error.
+quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err);
+
+quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q) {
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size) {
+	if(size > QUARTZ_MAX_STACK) {
+		return QUARTZ_ESTACK;
+	}
+	return QUARTZ_OK;
+}
+
+quartz_Value quartzI_getStackValue(quartz_Thread *Q, int x);
+void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v);

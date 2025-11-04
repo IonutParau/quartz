@@ -86,3 +86,50 @@ bool quartzI_isident(char c) {
 bool quartzI_isprint(char c) {
 	return c >= ' ' && c <= '~';
 }
+
+quartz_Uint quartzI_atou(const char *s, size_t base);
+quartz_Int quartzI_atoi(const char *s, size_t base);
+
+// s should be after the %
+void quartzI_parseFormatter(const char *s, quartz_FormatData *d) {
+	if(s[0] == '%') {
+		d->len = 1;
+		d->min = 0;
+		d->max = 0;
+		d->d = '%';
+		return;
+	}
+	d->len = 0;
+	d->min = 0;
+	d->max = 0;
+	d->minZeroed = false;
+	d->maxZeroed = false;
+	bool isMax = false;
+
+	while(true) {
+		char c = s[d->len];
+		if(c == '\0') return;
+		d->len++;
+		if(quartzI_isalpha(c)) {
+			// we done
+			d->d = c;
+			return;
+		} else if(quartzI_isnum(c)) {
+			// shit its a num
+			int n = c - '0';
+			if(isMax) {
+				if(d->max == 0 && n == 0) d->maxZeroed = true;
+				d->max += n;
+			} else {
+				if(d->min == 0 && n == 0) d->minZeroed = true;
+				d->min += n;
+			}
+		} else if(c == '*') {
+			// runtime!!!
+			if(isMax) d->max = -1;
+			else d->min = -1;
+		} else if(c == '.') {
+			isMax = true;
+		}
+	}
+}

@@ -3,6 +3,15 @@
 
 #include "quartz.h"
 
+typedef struct quartz_FormatData {
+	size_t len;
+	int min;
+	int max;
+	bool minZeroed;
+	bool maxZeroed;
+	char d;
+} quartz_FormatData;
+
 size_t quartzI_strlen(const char *s);
 void quartzI_memcpy(void *dest, const void *src, size_t len);
 void quartzI_memset(void *dest, unsigned char x, size_t len);
@@ -20,5 +29,11 @@ bool quartzI_isbase(char c, int base);
 bool quartzI_isident(char c);
 // checks whether a byte is ASCII printable
 bool quartzI_isprint(char c);
+
+quartz_Uint quartzI_atou(const char *s, size_t base);
+quartz_Int quartzI_atoi(const char *s, size_t base);
+
+// s should be after the %
+void quartzI_parseFormatter(const char *s, quartz_FormatData *d);
 
 #endif

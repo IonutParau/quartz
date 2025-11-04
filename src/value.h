@@ -192,12 +192,34 @@ typedef struct quartz_StackEntry {
 	quartz_Value value;
 } quartz_StackEntry;
 
+typedef struct quartz_CallEntry {
+	quartz_Value f;
+	// error handler
+	quartz_Value errorh;
+	// stack index of function, as in, what stack index to use for calls
+	size_t funcStackIdx;
+	union {
+		// for c functions
+		struct {
+			quartz_KFunction *k;
+			void *ku;
+		} c;
+		// for Quartz functions
+		struct {
+			size_t pc;
+		} q;
+	};
+} quartz_CallEntry;
+
 typedef struct quartz_Thread {
 	quartz_Object obj;
 	quartz_GlobalState *gState;
 	size_t stackCap;
 	size_t stackLen;
 	quartz_StackEntry *stack;
+	size_t callCap;
+	size_t callLen;
+	quartz_CallEntry *call;
 	struct quartz_Thread *resumedBy;
 	struct quartz_Thread *resuming;
 } quartz_Thread;
