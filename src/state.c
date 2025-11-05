@@ -202,12 +202,15 @@ quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q) {
 
 quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size) {
 	if(size > QUARTZ_MAX_STACK) {
-		return QUARTZ_ESTACK;
+		return quartz_erroras(Q, QUARTZ_ESTACK);
 	}
 	size_t newCap = Q->stackCap;
 	while(newCap < size) newCap *= 2;
 	if(newCap != Q->stackCap) {
 		quartz_StackEntry *newStack = quartz_realloc(Q, Q->stack, sizeof(*newStack) * Q->stackCap, sizeof(*newStack) * newCap);
+		if(newStack == NULL) {
+			return quartz_oom(Q);
+		}
 		Q->stack = newStack;
 		Q->stackCap = newCap;
 	}
