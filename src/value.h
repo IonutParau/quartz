@@ -43,6 +43,7 @@ typedef struct quartz_Object {
 typedef struct quartz_Value {
 	quartz_VType type;
 	union {
+		bool b;
 		quartz_Int integer;
 		quartz_Real real;
 		quartz_Complex complex;

@@ -201,7 +201,6 @@ bool quartz_validstackslot(quartz_Thread *Q, int x);
 
 // push data
 quartz_Errno quartz_pushnull(quartz_Thread *Q);
-quartz_Errno quartz_pushnullarray(quartz_Thread *Q, size_t x);
 quartz_Errno quartz_pushbool(quartz_Thread *Q, bool c);
 quartz_Errno quartz_pushint(quartz_Thread *Q, quartz_Int i);
 quartz_Errno quartz_pushreal(quartz_Thread *Q, quartz_Real r);
@@ -209,7 +208,9 @@ quartz_Errno quartz_pushcomplex(quartz_Thread *Q, quartz_Complex c);
 quartz_Errno quartz_pushcomplexsum(quartz_Thread *Q, quartz_Real real, quartz_Real imaginary);
 quartz_Errno quartz_pushstring(quartz_Thread *Q, const char *s);
 quartz_Errno quartz_pushlstring(quartz_Thread *Q, const char *s, size_t len);
-quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction f);
+quartz_Errno quartz_pushfstring(quartz_Thread *Q, const char *fmt, ...);
+quartz_Errno quartz_pushfstringv(quartz_Thread *Q, const char *fmt, va_list arg);
+quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f);
 quartz_Errno quartz_pushmap(quartz_Thread *Q, size_t cap);
 quartz_Errno quartz_pushlist(quartz_Thread *Q, size_t len, size_t cap);
 quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len);
@@ -238,10 +239,15 @@ typedef enum quartz_CallFlags {
 // basic data ops
 quartz_Type quartz_typeof(quartz_Thread *Q, int x);
 const char *quartz_typenameof(quartz_Thread *Q, int x);
+quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected);
 // pop key, then pop value, and push value[key]
 quartz_Errno quartz_getIndex(quartz_Thread *Q);
-// push cstring field then call quartz_getIndex()
+// pop value, push value[field]
 quartz_Errno quartz_getField(quartz_Thread *Q, const char *field);
+// pop value, pop key, then pop container, do container[key] = value
+quartz_Errno quartz_setIndex(quartz_Thread *Q);
+// pop value, pop, container, container[field] = value
+quartz_Errno quartz_setField(quartz_Thread *Q, const char *field);
 // pop the value and set the error handler. The error handler may be a function or null
 // if null, normal error handling is used.
 // In the case of OOM errors, the error handler is not called.

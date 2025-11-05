@@ -142,7 +142,16 @@ bool quartz_checkerror(quartz_Thread *Q) {
 
 // pop value and error
 quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit) {
+	if(quartz_getstacksize(Q) == 0) {
+		Q->errorValue = Q->gState->badErrorValue;
+		return QUARTZ_ERUNTIME;
+	}
 	quartz_Value v = quartzI_getStackValue(Q, -1);
+	if(v.type == QUARTZ_VNULL) v = Q->gState->badErrorValue;
+	Q->errorValue = v;
+	quartz_Errno err = quartz_pop(Q);
+	if(err) return err;
+	return exit;
 }
 
 // raise formatted string
@@ -153,12 +162,11 @@ quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt
 		quartz_bufdestroy(&buf);
 		return quartz_oom(Q);
 	}
-	quartz_String *s = quartzI_newString(Q, buf.len, NULL);
+	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
 	if(s == NULL) {
 		quartz_bufdestroy(&buf);
 		return quartz_oom(Q);
 	}
-	quartzI_memcpy(s->buf, buf.buf, buf.len);
 	Q->errorValue.type = QUARTZ_VOBJ;
 	Q->errorValue.obj = &s->obj;
 	quartz_bufdestroy(&buf);
@@ -345,4 +353,128 @@ quartz_Errno quartz_popn(quartz_Thread *Q, size_t times) {
 	size_t size = quartz_getstacksize(Q);
 	if(size < times) return quartz_errorf(Q, QUARTZ_ERUNTIME, "stack underflow by %u", (quartz_Uint)(times - size));
 	return quartz_setstacksize(Q, size - times);
+}
+
+quartz_Errno quartz_pushnull(quartz_Thread *Q) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VNULL});
+}
+
+quartz_Errno quartz_pushbool(quartz_Thread *Q, bool c) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VBOOL, .b = c});
+}
+
+quartz_Errno quartz_pushint(quartz_Thread *Q, quartz_Int i) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VINT, .integer = i});
+}
+
+quartz_Errno quartz_pushreal(quartz_Thread *Q, quartz_Real r) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VNUM, .real = r});
+}
+
+quartz_Errno quartz_pushcomplex(quartz_Thread *Q, quartz_Complex c) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VNUM, .complex = c});
+}
+
+quartz_Errno quartz_pushcomplexsum(quartz_Thread *Q, quartz_Real real, quartz_Real imaginary) {
+	return quartz_pushcomplex(Q, (quartz_Complex) {.real = real, .imaginary = imaginary});
+}
+
+quartz_Errno quartz_pushstring(quartz_Thread *Q, const char *s) {
+	return quartz_pushlstring(Q, s, quartzI_strlen(s));
+}
+
+quartz_Errno quartz_pushlstring(quartz_Thread *Q, const char *s, size_t len) {
+	quartz_String *str = quartzI_newString(Q, len, s);
+	if(str == NULL) return quartz_oom(Q);
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &str->obj});
+}
+
+quartz_Errno quartz_pushfstring(quartz_Thread *Q, const char *fmt, ...) {
+	va_list arg;
+	va_start(arg, fmt);
+	quartz_Errno err = quartz_pushfstringv(Q, fmt, arg);
+	va_end(arg);
+	return err;
+}
+
+quartz_Errno quartz_pushfstringv(quartz_Thread *Q, const char *fmt, va_list arg) {
+	quartz_Buffer buf;
+	quartz_bufinit(Q, &buf, 64);
+	if(quartz_bufputfv(&buf, fmt, arg)) {
+		quartz_bufdestroy(&buf);
+		return quartz_oom(Q);
+	}
+	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
+	if(s == NULL) {
+		quartz_bufdestroy(&buf);
+		return quartz_oom(Q);
+	}
+	quartz_bufdestroy(&buf);
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &s->obj});
+}
+
+quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VCFUNC, .func = f});
+}
+
+quartz_Errno quartz_pushvalue(quartz_Thread *Q, int idx) {
+	return quartzI_pushRawValue(Q, quartzI_getStackValue(Q, idx));
+}
+
+quartz_Errno quartz_pusherror(quartz_Thread *Q) {
+	return quartzI_pushRawValue(Q, Q->errorValue);
+}
+
+quartz_Type quartz_typeof(quartz_Thread *Q, int x) {
+	return quartzI_trueTypeOf(quartzI_getStackValue(Q, x));
+}
+
+const char *quartz_typenameof(quartz_Thread *Q, int x) {
+	return quartz_typenames[quartz_typeof(Q, x)];
+}
+
+quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected) {
+	quartz_Type actual = quartz_typeof(Q, x);
+	if(actual != expected) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s expected, got %s", quartz_typenames[expected], quartz_typenames[actual]);
+	}
+	return QUARTZ_OK;
+}
+
+const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err) {
+	return quartz_tolstring(Q, x, NULL, err);
+}
+
+const char *quartz_tolstring(quartz_Thread *Q, int x, size_t *len, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TSTR);
+	if(*err) return NULL;
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	quartz_String *s = (quartz_String *)v.obj;
+	*err = QUARTZ_OK;
+	if(len != NULL) *len = s->len;
+	return s->buf;
+}
+
+quartz_Int quartz_tointeger(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TINT);
+	if(*err) return 0;
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	*err = QUARTZ_OK;
+	return v.integer;
+}
+
+quartz_Real quartz_toreal(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TREAL);
+	if(*err) return 0;
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	*err = QUARTZ_OK;
+	return v.real;
+}
+
+quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TCOMPLEX);
+	if(*err) return (quartz_Complex) {0, 0};
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	*err = QUARTZ_OK;
+	return v.complex;
 }
