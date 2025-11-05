@@ -59,6 +59,15 @@ quartz_Type quartzI_trueTypeOf(quartz_Value v) {
 
 	quartz_Object *obj = v.obj;
 	if(obj->type == QUARTZ_OSTR) return QUARTZ_TSTR;
+	if(obj->type == QUARTZ_OLIST) return QUARTZ_TLIST;
+	if(obj->type == QUARTZ_OTUPLE) return QUARTZ_TTUPLE;
+	if(obj->type == QUARTZ_OSET) return QUARTZ_TSET;
+	if(obj->type == QUARTZ_OSTRUCT) return QUARTZ_TSTRUCT;
+	if(obj->type == QUARTZ_OFUNCTION) return QUARTZ_TFUNCTION;
+	if(obj->type == QUARTZ_OCLOSURE) return QUARTZ_TFUNCTION;
+	if(obj->type == QUARTZ_OPOINTER) return QUARTZ_TPOINTER;
+	if(obj->type == QUARTZ_OTHREAD) return QUARTZ_TTHREAD;
+	if(obj->type == QUARTZ_OUSERDATA) return QUARTZ_TUSERDATA;
 	return QUARTZ_TNULL; // idfk
 }
 
@@ -81,3 +90,18 @@ const char *quartz_typenames[QUARTZ_TCOUNT] = {
 };
 
 bool quartzI_equals(quartz_Value a, quartz_Value b);
+
+bool quartzI_isInterpretedFunction(quartz_Value f) {
+	if(f.type == QUARTZ_VCFUNC) return false;
+	if(f.type != QUARTZ_VOBJ) return false;
+	if(f.obj->type == QUARTZ_OFUNCTION) return false;
+	if(f.obj->type != QUARTZ_OCLOSURE) return false;
+	quartz_Closure *c = (quartz_Closure *)f.obj;
+	return quartzI_isInterpretedFunction(c->f);
+}
+
+quartz_Closure *quartzI_getClosure(quartz_Value f) {
+	if(f.type != QUARTZ_VOBJ) return false;
+	if(f.obj->type != QUARTZ_OCLOSURE) return false;
+	return (quartz_Closure *)f.obj;
+}

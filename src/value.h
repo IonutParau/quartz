@@ -197,6 +197,7 @@ typedef struct quartz_CallEntry {
 	quartz_Value errorh;
 	// stack index of function, as in, what stack index to use for calls
 	size_t funcStackIdx;
+	quartz_CallFlags flags;
 	union {
 		// for c functions
 		struct {
@@ -230,7 +231,7 @@ typedef struct quartz_Userdata {
 	void *userdata;
 	size_t userdataSize;
 	char *typestr;
-	quartz_UFunction uFunc;
+	quartz_UFunction *uFunc;
 	size_t associatedLen;
 	quartz_Value associated[];
 } quartz_Userdata;
@@ -242,5 +243,7 @@ size_t quartzI_hash(quartz_Value val);
 size_t quartzI_memsizeof(quartz_Value val);
 quartz_Type quartzI_trueTypeOf(quartz_Value v);
 bool quartzI_equals(quartz_Value a, quartz_Value b);
+bool quartzI_isInterpretedFunction(quartz_Value f);
+quartz_Closure *quartzI_getClosure(quartz_Value f);
 
 #endif

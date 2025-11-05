@@ -2,7 +2,6 @@
 #include "lexer.h"
 #include "utils.h"
 #include "parser.h"
-#include <stdio.h>
 
 quartz_Node *quartzI_allocAST(quartz_Thread *Q, quartz_NodeType type, unsigned int line, const char *str, size_t strlen) {
 	quartz_Node *n = quartz_alloc(Q, sizeof(*n));

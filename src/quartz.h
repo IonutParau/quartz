@@ -76,8 +76,8 @@ void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf *alloc);
 void quartz_setClock(quartz_Context *ctx, quartz_Clockf *clock);
 void quartz_setTime(quartz_Context *ctx, quartz_Timef *time);
 
-typedef quartz_Errno (*quartz_CFunction)(quartz_Thread *Q, size_t argc);
-typedef quartz_Errno (*quartz_KFunction)(quartz_Thread *Q, quartz_Errno state, void *context);
+typedef quartz_Errno (quartz_CFunction)(quartz_Thread *Q, size_t argc);
+typedef quartz_Errno (quartz_KFunction)(quartz_Thread *Q, quartz_Errno state, void *context);
 
 typedef enum quartz_UserOp {
 	// An attempt to read a field. Arg 1 stores the field name as a string. Should return the value, or an error.
@@ -89,7 +89,7 @@ typedef enum quartz_UserOp {
 	QUARTZ_USER_DESTROY,
 } quartz_UserOp;
 
-typedef quartz_Errno (*quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz_UserOp op);
+typedef quartz_Errno (quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz_UserOp op);
 
 // the stack size is in values
 quartz_Thread *quartz_newThread(quartz_Context *ctx);
@@ -190,6 +190,8 @@ quartz_Errno quartz_oom(quartz_Thread *Q);
 // generic function for errnos.
 // If you error out as QUARTZ_ERUNTIME, it will simply error out a generic runtime error.
 quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err);
+// error if condition is false
+quartz_Errno quartz_assertf(quartz_Thread *Q, bool condition, quartz_Errno exit, const char *fmt, ...);
 
 // get the index of the stack top. (stacksize - 1)
 size_t quartz_gettop(quartz_Thread *Q);
@@ -217,6 +219,7 @@ quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len);
 quartz_Errno quartz_pushstruct(quartz_Thread *Q, size_t fields);
 quartz_Errno quartz_pushregistry(quartz_Thread *Q);
 quartz_Errno quartz_pushglobals(quartz_Thread *Q);
+quartz_Errno quartz_pushloaded(quartz_Thread *Q);
 quartz_Errno quartz_pushvalue(quartz_Thread *Q, int idx);
 // pop top value and push as result struct
 quartz_Errno quartz_pushresult(quartz_Thread *Q, bool ok);

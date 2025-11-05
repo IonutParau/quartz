@@ -4,5 +4,6 @@
 #include "utils.c"
 #include "value.c"
 #include "buf.c"
+#include "vm.c"
 #include "lexer.c"
 #include "parser.c"

@@ -206,6 +206,15 @@ quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err) {
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "runtime error");
 }
 
+quartz_Errno quartz_assertf(quartz_Thread *Q, bool condition, quartz_Errno exit, const char *fmt, ...) {
+	if(condition) return QUARTZ_OK;
+	va_list arg;
+	va_start(arg, fmt);
+	quartz_Errno err = quartz_errorfv(Q, exit, fmt, arg);
+	va_end(arg);
+	return err;
+}
+
 quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q) {
 	return QUARTZ_OK;
 }
@@ -261,13 +270,13 @@ void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v) {
 	}
 	size_t i = off + x;
 	if(i >= Q->stackLen) return;
-	quartz_StackEntry entry = Q->stack[i];
-	if(entry.isPtr) {
-		quartz_Pointer *p = (quartz_Pointer *)entry.value.obj;
+	quartz_StackEntry *entry = Q->stack + i;
+	if(entry->isPtr) {
+		quartz_Pointer *p = (quartz_Pointer *)entry->value.obj;
 		p->val = v;
 		return;
 	}
-	entry.value = v;
+	entry->value = v;
 }
 
 quartz_Errno quartzI_getFunctionIndex(quartz_Thread *Q, size_t *idx) {

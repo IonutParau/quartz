@@ -8,6 +8,24 @@
 #define QUARTZ_USE_LIBC
 #include "one.c"
 
+static quartz_Errno testPrint(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	const char *s = quartz_tostring(Q, -1, &err);
+	if(err) return err;
+	printf("%s\n", s);
+	return err;
+}
+
+static quartz_Errno testStuff(quartz_Thread *Q) {
+	quartz_Errno err;
+	err = quartz_pushcfunction(Q, testPrint);
+	if(err) return err;
+	err = quartz_pushstring(Q, "Hello, world!");
+	if(err) return err;
+	err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+	return QUARTZ_OK;
+}
+
 int main(int argc, char **argv) {
 	size_t cSize = quartz_sizeOfContext();
 	char cMem[cSize];
@@ -16,6 +34,12 @@ int main(int argc, char **argv) {
 	quartz_Thread *Q = quartz_newThread(ctx);
 	printf("Thread: %p\n", Q);
 	printf("Memory Usage: %zu\n", quartz_gcCount(Q));
+
+	quartz_Errno err = testStuff(Q);
+	if(err) {
+		printf("Error: %d\n", err);
+		return 1;
+	}
 
 	quartz_Buffer buf;
 	quartz_bufinit(Q, &buf, 1024);

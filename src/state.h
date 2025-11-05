@@ -6,6 +6,11 @@
 
 quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q);
 quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size);
+quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry);
+void quartzI_popCallEntry(quartz_Thread *Q);
+quartz_CallEntry *quartzI_getCallEntry(quartz_Thread *Q, size_t off);
+bool quartzI_isCurrentlyInterpreted(quartz_Thread *Q);
+quartz_Errno quartzI_runTopEntry(quartz_Thread *Q);
 quartz_Value quartzI_getStackValue(quartz_Thread *Q, int x);
 void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v);
 quartz_Errno quartzI_pushRawValue(quartz_Thread *Q, quartz_Value v);
