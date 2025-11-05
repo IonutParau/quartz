@@ -141,7 +141,9 @@ bool quartz_checkerror(quartz_Thread *Q) {
 }
 
 // pop value and error
-quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit);
+quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit) {
+	quartz_Value v = quartzI_getStackValue(Q, -1);
+}
 
 // raise formatted string
 quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt, va_list args) {
@@ -222,8 +224,43 @@ quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size) {
 	return QUARTZ_OK;
 }
 
-quartz_Value quartzI_getStackValue(quartz_Thread *Q, int x);
-void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v);
+quartz_Value quartzI_getStackValue(quartz_Thread *Q, int x) {
+	size_t off = quartzI_stackFrameOffset(Q);
+	size_t size = quartz_getstacksize(Q);
+
+	quartz_Value null = {.type = QUARTZ_VNULL};
+	if(x < 0) {
+		x += size;
+		if(x < 0) return null; // underflow
+	}
+	size_t i = off + x;
+	if(i >= Q->stackLen) return null;
+	quartz_StackEntry entry = Q->stack[i];
+	if(entry.isPtr) {
+		quartz_Pointer *p = (quartz_Pointer *)entry.value.obj;
+		return p->val;
+	}
+	return entry.value;
+}
+
+void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v) {
+	size_t off = quartzI_stackFrameOffset(Q);
+	size_t size = quartz_getstacksize(Q);
+
+	if(x < 0) {
+		x += size;
+		if(x < 0) return; // underflow
+	}
+	size_t i = off + x;
+	if(i >= Q->stackLen) return;
+	quartz_StackEntry entry = Q->stack[i];
+	if(entry.isPtr) {
+		quartz_Pointer *p = (quartz_Pointer *)entry.value.obj;
+		p->val = v;
+		return;
+	}
+	entry.value = v;
+}
 
 quartz_Errno quartzI_getFunctionIndex(quartz_Thread *Q, size_t *idx) {
 	if(Q->callLen == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "missing call entry");
@@ -250,4 +287,62 @@ size_t quartz_getstacksize(quartz_Thread *Q) {
 // set the size of the current stack frame. 
 quartz_Errno quartz_setstacksize(quartz_Thread *Q, size_t size) {
 	return quartzI_ensureStackSize(Q, quartzI_stackFrameOffset(Q) + size);
+}
+
+bool quartz_validstackslot(quartz_Thread *Q, int x) {
+	size_t off = quartzI_stackFrameOffset(Q);
+	size_t size = quartz_getstacksize(Q);
+
+	if(x < 0) {
+		x += size;
+		if(x < 0) return false; // underflow
+	}
+	size_t i = off + x;
+	return i < Q->stackLen;
+}
+
+quartz_Errno quartzI_pushRawValue(quartz_Thread *Q, quartz_Value v) {
+	quartz_Errno err = quartz_setstacksize(Q, quartz_getstacksize(Q)+1);
+	if(err) return err;
+	quartzI_setStackValue(Q, -1, v);
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_swap(quartz_Thread *Q, int a, int b) {
+	if(!quartz_validstackslot(Q, a)) return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid swap operand #1: %d", (quartz_Int)a);
+	if(!quartz_validstackslot(Q, b)) return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid swap operand #2: %d", (quartz_Int)b);
+	quartz_Value tmp = quartzI_getStackValue(Q, a);
+	quartzI_setStackValue(Q, a, quartzI_getStackValue(Q, b));
+	quartzI_setStackValue(Q, b, tmp);
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_copy(quartz_Thread *Q, int from, int to) {
+	if(!quartz_validstackslot(Q, from)) return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid copy source: %d", (quartz_Int)from);
+	if(!quartz_validstackslot(Q, to)) return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid copy destination: %d", (quartz_Int)to);
+	quartzI_setStackValue(Q, to, quartzI_getStackValue(Q, from));
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_dup(quartz_Thread *Q) {
+	return quartz_dupn(Q, 1);
+}
+
+quartz_Errno quartz_pop(quartz_Thread *Q) {
+	return quartz_popn(Q, 1);
+}
+
+quartz_Errno quartz_dupn(quartz_Thread *Q, size_t times) {
+	for(size_t i = 0; i < times; i++) {
+		quartz_Value v = quartzI_getStackValue(Q, -times);
+		quartz_Errno err = quartzI_pushRawValue(Q, v);
+		if(err) return err;
+	}
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_popn(quartz_Thread *Q, size_t times) {
+	size_t size = quartz_getstacksize(Q);
+	if(size < times) return quartz_errorf(Q, QUARTZ_ERUNTIME, "stack underflow by %u", (quartz_Uint)(times - size));
+	return quartz_setstacksize(Q, size - times);
 }

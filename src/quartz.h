@@ -197,8 +197,12 @@ size_t quartz_gettop(quartz_Thread *Q);
 size_t quartz_getstacksize(quartz_Thread *Q);
 // set the size of the current stack frame. 
 quartz_Errno quartz_setstacksize(quartz_Thread *Q, size_t size);
+bool quartz_validstackslot(quartz_Thread *Q, int x);
 
 // push data
+quartz_Errno quartz_pushnull(quartz_Thread *Q);
+quartz_Errno quartz_pushnullarray(quartz_Thread *Q, size_t x);
+quartz_Errno quartz_pushbool(quartz_Thread *Q, bool c);
 quartz_Errno quartz_pushint(quartz_Thread *Q, quartz_Int i);
 quartz_Errno quartz_pushreal(quartz_Thread *Q, quartz_Real r);
 quartz_Errno quartz_pushcomplex(quartz_Thread *Q, quartz_Complex c);
@@ -219,12 +223,12 @@ quartz_Errno quartz_pushresult(quartz_Thread *Q, bool ok);
 quartz_Errno quartz_pusherror(quartz_Thread *Q);
 
 // basic stack ops
-void quartz_swap(quartz_Thread *Q, int a, int b);
-void quartz_copy(quartz_Thread *Q, int from, int to);
-void quartz_dup(quartz_Thread *Q);
-void quartz_pop(quartz_Thread *Q);
-void quartz_dupn(quartz_Thread *Q, size_t times);
-void quartz_popn(quartz_Thread *Q, size_t times);
+quartz_Errno quartz_swap(quartz_Thread *Q, int a, int b);
+quartz_Errno quartz_copy(quartz_Thread *Q, int from, int to);
+quartz_Errno quartz_dup(quartz_Thread *Q);
+quartz_Errno quartz_pop(quartz_Thread *Q);
+quartz_Errno quartz_dupn(quartz_Thread *Q, size_t times);
+quartz_Errno quartz_popn(quartz_Thread *Q, size_t times);
 
 typedef enum quartz_CallFlags {
 	QUARTZ_CALL_STATIC = 1<<0, // ret is not needed
