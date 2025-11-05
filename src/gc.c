@@ -68,7 +68,7 @@ quartz_String *quartzI_newString(quartz_Thread *Q, size_t len, const char *mem) 
 	if(s == NULL) return NULL;
 	s->len = len;
 	s->hash = 0;
-	quartzI_memcpy(s->buf, mem, len);
+	if(mem != NULL) quartzI_memcpy(s->buf, mem, len);
 	s->buf[len] = '\0';
 	return s;
 }

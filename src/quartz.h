@@ -177,12 +177,14 @@ void quartz_bufreset(quartz_Buffer *buf);
 
 // clear error object
 void quartz_clearerror(quartz_Thread *Q);
+// checks if an error object is present
+bool quartz_checkerror(quartz_Thread *Q);
 // pop value and error
-quartz_Errno quartz_error(quartz_Thread *Q);
+quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit);
 // raise formatted string
-quartz_Errno quartz_errorfv(quartz_Thread *Q, const char *fmt, va_list args);
+quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt, va_list args);
 // raise formatted string
-quartz_Errno quartz_errorf(quartz_Thread *Q, const char *fmt, ...);
+quartz_Errno quartz_errorf(quartz_Thread *Q, quartz_Errno exit, const char *fmt, ...);
 // specialized function for OOMs
 quartz_Errno quartz_oom(quartz_Thread *Q);
 // generic function for errnos.
@@ -192,9 +194,9 @@ quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err);
 // get the index of the stack top. (stacksize - 1)
 size_t quartz_gettop(quartz_Thread *Q);
 // get the size of the current stack frame.
-size_t quartz_gettop(quartz_Thread *Q);
+size_t quartz_getstacksize(quartz_Thread *Q);
 // set the size of the current stack frame. 
-quartz_Errno quartz_setstacksize(quartz_Thread *Q, size_t top);
+quartz_Errno quartz_setstacksize(quartz_Thread *Q, size_t size);
 
 // push data
 quartz_Errno quartz_pushint(quartz_Thread *Q, quartz_Int i);

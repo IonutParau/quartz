@@ -173,8 +173,6 @@ typedef struct quartz_GlobalState {
 	size_t gcPeak;
 	size_t gcUserdataCount; // used to check if we should run finalizers. This only counts userdata with associated values, as those without can be freed in any order.
 	double gcRatio;
-	// if null, no error value
-	quartz_Value errorValue;
 	// if you try to raise a null runtime error
 	quartz_Value badErrorValue;
 	// the error object used when we run out of memory (preallocated, obviously)
@@ -214,6 +212,8 @@ typedef struct quartz_CallEntry {
 typedef struct quartz_Thread {
 	quartz_Object obj;
 	quartz_GlobalState *gState;
+	// if null, no error value
+	quartz_Value errorValue;
 	size_t stackCap;
 	size_t stackLen;
 	quartz_StackEntry *stack;
