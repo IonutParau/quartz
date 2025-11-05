@@ -43,9 +43,9 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	gState->badErrorValue.type = QUARTZ_VOBJ;
 	gState->badErrorValue.obj = &quartzI_newCString(Q, "bad error")->obj;
 
-	gState->registry = quartzI_newMap(Q);
-	gState->globals = quartzI_newMap(Q);
-	gState->loaded = quartzI_newMap(Q);
+	gState->registry = quartzI_newMap(Q, 0);
+	gState->globals = quartzI_newMap(Q, 32);
+	gState->loaded = quartzI_newMap(Q, 16);
 	gState->resultFields = quartzI_newTuple(Q, 2);
 
 	gState->resultFields->vals[0].type = QUARTZ_VOBJ;

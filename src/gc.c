@@ -117,12 +117,12 @@ quartz_Set *quartzI_newSet(quartz_Thread *Q, size_t cap) {
 	return s;
 }
 
-quartz_Map *quartzI_newMap(quartz_Thread *Q) {
-	size_t backingBufferSize = 4;
-	size_t pairSize = sizeof(quartz_MapPair) * backingBufferSize;
+quartz_Map *quartzI_newMap(quartz_Thread *Q, size_t cap) {
+	if(cap == 0) cap = 4;
+	size_t pairSize = sizeof(quartz_MapPair) * cap;
 	quartz_MapPair *pairs = quartz_alloc(Q, pairSize);
 	if(pairs == NULL) return NULL;
-	for(size_t i = 0; i < backingBufferSize; i++) {
+	for(size_t i = 0; i < cap; i++) {
 		// mark as unallocated
 		pairs[i].key.type = QUARTZ_VNULL;
 	}
@@ -133,7 +133,7 @@ quartz_Map *quartzI_newMap(quartz_Thread *Q) {
 		return NULL;
 	}
 	m->pairs = pairs;
-	m->capacity = backingBufferSize;
+	m->capacity = cap;
 	m->filledAmount = 0;
 	return m;
 }
