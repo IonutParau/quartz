@@ -244,13 +244,13 @@ quartz_Type quartz_typeof(quartz_Thread *Q, int x);
 const char *quartz_typenameof(quartz_Thread *Q, int x);
 quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected);
 // pop key, then pop value, and push value[key]
-quartz_Errno quartz_getIndex(quartz_Thread *Q);
+quartz_Errno quartz_getindex(quartz_Thread *Q);
 // pop value, push value[field]
-quartz_Errno quartz_getField(quartz_Thread *Q, const char *field);
+quartz_Errno quartz_getfield(quartz_Thread *Q, const char *field);
 // pop value, pop key, then pop container, do container[key] = value
-quartz_Errno quartz_setIndex(quartz_Thread *Q);
+quartz_Errno quartz_setindex(quartz_Thread *Q);
 // pop value, pop, container, container[field] = value
-quartz_Errno quartz_setField(quartz_Thread *Q, const char *field);
+quartz_Errno quartz_setfield(quartz_Thread *Q, const char *field);
 // pop the value and set the error handler. The error handler may be a function or null
 // if null, normal error handling is used.
 // In the case of OOM errors, the error handler is not called.
