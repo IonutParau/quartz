@@ -249,10 +249,27 @@ quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected);
 quartz_Errno quartz_getindex(quartz_Thread *Q);
 // pop value, push value[field]
 quartz_Errno quartz_getfield(quartz_Thread *Q, const char *field);
+// pop value, push value[idx]
+quartz_Errno quartz_geti(quartz_Thread *Q, quartz_Uint idx);
 // pop value, pop key, then pop container, do container[key] = value
 quartz_Errno quartz_setindex(quartz_Thread *Q);
-// pop value, pop, container, container[field] = value
+// pop value, pop container, container[field] = value
 quartz_Errno quartz_setfield(quartz_Thread *Q, const char *field);
+// pop value, pop container, container[idx] = value
+quartz_Errno quartz_seti(quartz_Thread *Q, quartz_Uint idx);
+// pop n values, then append them into the array at the new top.
+// In the case of a tuple, it does not error. Instead, the tuple is overwritten with a new tuple, containing the new values.
+quartz_Errno quartz_append(quartz_Thread *Q, size_t n);
+// on the stack should be (from top to bottom), value, key then container. Key of nil means start of the iteration.
+// Key should be set to null at the start, to indicate the start of the iteration.
+// The function will set key to the current key, and value to the current value of the iterator.
+// This mechanism allows you to call next in a loop to iterate the entire container.
+// If the next key is null, there is no more data left. Value is undefined in that scenario.
+// In the case of:
+// - arrays and tuples, the key is the index, and the value is the value at that index.
+// - maps, the mapping is obvious.
+// - structs, the key is the field, and the value is the value of the field.
+quartz_Errno quartz_iterate(quartz_Thread *Q);
 // pop the value and set the error handler. The error handler may be a function or null
 // if null, normal error handling is used.
 // In the case of OOM errors, the error handler is not called.
@@ -265,5 +282,9 @@ const char *quartz_tolstring(quartz_Thread *Q, int x, size_t *len, quartz_Errno 
 quartz_Int quartz_tointeger(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Real quartz_toreal(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err);
+// get the length (for tuple, array, map and struct)
+size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
+// get the capacity (for array and map)
+size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err);
 
 #endif

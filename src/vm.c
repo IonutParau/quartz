@@ -1,6 +1,7 @@
 #include "quartz.h"
 #include "value.h"
 #include "state.h"
+#include "gc.h"
 
 quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry) {
 	if(Q->callLen == QUARTZ_MAX_CALL) {
@@ -59,6 +60,8 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 	};
 	if(quartzI_isInterpretedFunction(f)) {
 		e.q.pc = 0;
+		// technically can be left uninitialized but eh who cares
+		e.q.funcSelected = 0;
 	} else {
 		e.c.k = NULL;
 		e.c.ku = NULL;
@@ -86,6 +89,8 @@ static quartz_Errno quartzI_callCFunc(quartz_Thread *Q, quartz_CFunction *f) {
 		Q->stackLen = c->funcStackIdx + 1;
 	}
 	quartzI_popCallEntry(Q);
+	// API can make a bunch of garbage, so we should clean stuff
+	quartzI_emptyTemporaries(Q);
 	return err;
 }
 

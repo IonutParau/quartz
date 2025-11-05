@@ -207,6 +207,8 @@ typedef struct quartz_CallEntry {
 		// for Quartz functions
 		struct {
 			size_t pc;
+			// function index for call to compute arg count
+			size_t funcSelected;
 		} q;
 	};
 } quartz_CallEntry;
