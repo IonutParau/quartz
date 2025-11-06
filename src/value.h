@@ -250,5 +250,7 @@ bool quartzI_isInterpretedFunction(quartz_Value f);
 quartz_Closure *quartzI_getClosure(quartz_Value f);
 quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key);
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v);
+quartz_Errno quartzI_getIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value *val);
+quartz_Errno quartzI_setIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value val);
 
 #endif

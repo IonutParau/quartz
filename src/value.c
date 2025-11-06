@@ -74,6 +74,79 @@ quartz_Type quartzI_trueTypeOf(quartz_Value v) {
 	return QUARTZ_TNULL; // idfk
 }
 
+quartz_CmpFlags quartzI_compare(quartz_Value a, quartz_Value b) {
+	quartz_CmpFlags flags = 0;
+	if(a.type == QUARTZ_VINT) {
+		if(b.type == QUARTZ_VINT) {
+			if(a.integer == b.integer) flags |= QUARTZ_CMP_EQUAL;
+			if(a.integer < b.integer) flags |= QUARTZ_CMP_LESS;
+			if(a.integer > b.integer) flags |= QUARTZ_CMP_GREATER;
+		}
+		if(b.type == QUARTZ_VNUM) {
+			if(a.integer == b.real) flags |= QUARTZ_CMP_EQUAL;
+			if(a.integer < b.real) flags |= QUARTZ_CMP_LESS;
+			if(a.integer > b.real) flags |= QUARTZ_CMP_GREATER;
+		}
+		if(b.type == QUARTZ_VCOMPLEX) {
+			quartz_Complex c = b.complex;
+			if(c.imaginary == 0) {
+				if(a.integer == c.real) flags |= QUARTZ_CMP_EQUAL;
+				if(a.integer < c.real) flags |= QUARTZ_CMP_LESS;
+				if(a.integer > c.real) flags |= QUARTZ_CMP_GREATER;
+			}
+		}
+	}
+	if(a.type == QUARTZ_VNUM) {
+		if(b.type == QUARTZ_VINT) {
+			if(a.real == b.integer) flags |= QUARTZ_CMP_EQUAL;
+			if(a.real < b.integer) flags |= QUARTZ_CMP_LESS;
+			if(a.real > b.integer) flags |= QUARTZ_CMP_GREATER;
+		}
+		if(b.type == QUARTZ_VNUM) {
+			if(a.real == b.real) flags |= QUARTZ_CMP_EQUAL;
+			if(a.real < b.real) flags |= QUARTZ_CMP_LESS;
+			if(a.real > b.real) flags |= QUARTZ_CMP_GREATER;
+		}
+		if(b.type == QUARTZ_VCOMPLEX) {
+			quartz_Complex c = b.complex;
+			if(c.imaginary == 0) {
+				if(a.real == c.real) flags |= QUARTZ_CMP_EQUAL;
+				if(a.real < c.real) flags |= QUARTZ_CMP_LESS;
+				if(a.real > c.real) flags |= QUARTZ_CMP_GREATER;
+			}
+		}
+	}
+	if(a.type == QUARTZ_VCOMPLEX) {
+		quartz_Complex c = a.complex;
+		if(b.type == QUARTZ_VINT) {
+			if(c.imaginary == 0) {
+				if(c.real == b.integer) flags |= QUARTZ_CMP_EQUAL;
+				if(c.real < b.integer) flags |= QUARTZ_CMP_LESS;
+				if(c.real > b.integer) flags |= QUARTZ_CMP_GREATER;
+			}
+		}
+		if(b.type == QUARTZ_VNUM) {
+			if(c.imaginary == 0) {
+				if(c.real == b.real) flags |= QUARTZ_CMP_EQUAL;
+				if(c.real < b.real) flags |= QUARTZ_CMP_LESS;
+				if(c.real > b.real) flags |= QUARTZ_CMP_GREATER;
+			}
+		}
+		if(b.type == QUARTZ_VCOMPLEX) {
+			quartz_Complex c2 = b.complex;
+			if(c.imaginary == c2.imaginary) {
+				if(c.real == c2.real) flags |= QUARTZ_CMP_EQUAL;
+				if(c.real < c2.real) flags |= QUARTZ_CMP_LESS;
+				if(c.real > c2.real) flags |= QUARTZ_CMP_GREATER;
+			}
+		}
+	}
+	if(a.type == QUARTZ_VOBJ && b.type == QUARTZ_VOBJ) {
+		if(a.obj == b.obj) flags |= QUARTZ_CMP_EQUAL;
+	}
+	return flags;
+}
+
 const char *quartz_typenames[QUARTZ_TCOUNT] = {
 	[QUARTZ_TNULL] = "null",
 	[QUARTZ_TBOOL] = "bool",
@@ -105,4 +178,111 @@ quartz_Closure *quartzI_getClosure(quartz_Value f) {
 	if(f.type != QUARTZ_VOBJ) return false;
 	if(f.obj->type != QUARTZ_OCLOSURE) return false;
 	return (quartz_Closure *)f.obj;
+}
+
+quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key) {
+	if(!quartzI_validKey(key)) return (quartz_Value) {.type = QUARTZ_VNULL};
+	size_t hash = quartzI_hash(key);
+	size_t i = hash;
+	size_t left = m->capacity;
+	while(left > 0) {
+		i %= m->capacity;
+		if(m->pairs[i].key.type == QUARTZ_VNULL) break;
+		if(quartzI_compare(m->pairs[i].key, key) & QUARTZ_CMP_EQUAL) {
+			return m->pairs[i].val;
+		}
+		i++;
+		left--;
+	}
+	return (quartz_Value) {.type = QUARTZ_VNULL};
+}
+
+quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v) {
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "not implemented yet");
+}
+
+quartz_Errno quartzI_getIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value *val) {
+	val->type = QUARTZ_VNULL;
+	if(container.type != QUARTZ_VOBJ) goto typeError;
+	quartz_Object *o = container.obj;
+	if(o->type == QUARTZ_OLIST) {
+		quartz_List *l = (quartz_List *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= l->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		*val = l->vals[key.integer];
+		goto ok;
+	}
+	if(o->type == QUARTZ_OTUPLE) {
+		quartz_Tuple *t = (quartz_Tuple *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= t->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		*val = t->vals[key.integer];
+		goto ok;
+	}
+	if(o->type == QUARTZ_OSET) {
+		quartz_Set *l = (quartz_Set *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= l->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		*val = l->vals[key.integer];
+		goto ok;
+	}
+	if(o->type == QUARTZ_OMAP) {
+		quartz_Map *m = (quartz_Map *)o;
+		*val = quartzI_mapGet(m, key);
+		goto ok;
+	}
+typeError:
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenames[quartzI_trueTypeOf(container)]);
+badKeyType:
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "illegal key type: %s", quartz_typenames[quartzI_trueTypeOf(key)]);
+ok:
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartzI_setIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value val) {
+	if(container.type != QUARTZ_VOBJ) goto typeError;
+	quartz_Object *o = container.obj;
+	if(o->type == QUARTZ_OLIST) {
+		quartz_List *l = (quartz_List *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= l->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		l->vals[key.integer] = val;
+		goto ok;
+	}
+	if(o->type == QUARTZ_OTUPLE) {
+		quartz_Tuple *t = (quartz_Tuple *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= t->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		t->vals[key.integer] = val;
+		goto ok;
+	}
+	if(o->type == QUARTZ_OSET) {
+		quartz_Set *l = (quartz_Set *)o;
+		if(key.type != QUARTZ_VINT) goto badKeyType;
+		if(key.integer < 0 || key.integer >= l->len) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
+		}
+		l->vals[key.integer] = val;
+		goto ok;
+	}
+	if(o->type == QUARTZ_OMAP) {
+		quartz_Map *m = (quartz_Map *)o;
+		return quartzI_mapSet(Q, m, key, val);
+	}
+typeError:
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenames[quartzI_trueTypeOf(container)]);
+badKeyType:
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "illegal key type: %s", quartz_typenames[quartzI_trueTypeOf(key)]);
+ok:
+	return QUARTZ_OK;
 }

@@ -255,12 +255,16 @@ quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected);
 quartz_Errno quartz_getindex(quartz_Thread *Q);
 // pop value, push value[field]
 quartz_Errno quartz_getfield(quartz_Thread *Q, const char *field);
+// pop value, push value[field]
+quartz_Errno quartz_getlfield(quartz_Thread *Q, const char *field, size_t len);
 // pop value, push value[idx]
 quartz_Errno quartz_geti(quartz_Thread *Q, quartz_Uint idx);
 // pop value, pop key, then pop container, do container[key] = value
 quartz_Errno quartz_setindex(quartz_Thread *Q);
 // pop value, pop container, container[field] = value
 quartz_Errno quartz_setfield(quartz_Thread *Q, const char *field);
+// pop value, pop container, container[field] = value
+quartz_Errno quartz_setlfield(quartz_Thread *Q, const char *field, size_t len);
 // pop value, pop container, container[idx] = value
 quartz_Errno quartz_seti(quartz_Thread *Q, quartz_Uint idx);
 // pop n values, then append them into the array at the new top.
@@ -295,6 +299,7 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
 // get the capacity (for array and map)
 size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err);
 size_t quartz_memsizeof(quartz_Thread *Q, int x);
+bool quartz_contains(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b);
 
 #endif
