@@ -76,6 +76,12 @@ quartz_Type quartzI_trueTypeOf(quartz_Value v) {
 
 quartz_CmpFlags quartzI_compare(quartz_Value a, quartz_Value b) {
 	quartz_CmpFlags flags = 0;
+	if(a.type == QUARTZ_VNULL) {
+		if(b.type == QUARTZ_VNULL) flags |= QUARTZ_CMP_EQUAL;
+	}
+	if(a.type == QUARTZ_VBOOL) {
+		if(b.type == QUARTZ_VBOOL && a.b == b.b) flags |= QUARTZ_CMP_EQUAL;
+	}
 	if(a.type == QUARTZ_VINT) {
 		if(b.type == QUARTZ_VINT) {
 			if(a.integer == b.integer) flags |= QUARTZ_CMP_EQUAL;
