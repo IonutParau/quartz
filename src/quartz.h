@@ -241,6 +241,12 @@ typedef enum quartz_CallFlags {
 	QUARTZ_CALL_PROTECTED = 1<<1, // a try call
 } quartz_CallFlags;
 
+typedef enum quartz_CmpFlags {
+	QUARTZ_CMP_EQUAL = 1<<0,
+	QUARTZ_CMP_LESS = 1<<1,
+	QUARTZ_CMP_GREATER = 1<<2,
+} quartz_CmpFlags;
+
 // basic data ops
 quartz_Type quartz_typeof(quartz_Thread *Q, int x);
 const char *quartz_typenameof(quartz_Thread *Q, int x);
@@ -275,6 +281,8 @@ quartz_Errno quartz_iterate(quartz_Thread *Q);
 // In the case of OOM errors, the error handler is not called.
 void quartz_seterrorhandler(quartz_Thread *Q);
 quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags);
+// return a value from a call
+quartz_Errno quartz_return(quartz_Thread *Q, int x);
 
 // getting data out
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);
@@ -286,5 +294,7 @@ quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err);
 size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
 // get the capacity (for array and map)
 size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err);
+size_t quartz_memsizeof(quartz_Thread *Q, int x);
+quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b);
 
 #endif

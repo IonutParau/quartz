@@ -30,13 +30,15 @@ size_t quartzI_hash(quartz_Value val) {
 	}
 	if(obj->type == QUARTZ_OTUPLE) {
 		quartz_Tuple *t = (quartz_Tuple *)obj;
-		if(t->hash != 0) return t->hash;
+		if((t->hash & 1) == 1) return t->hash;
+		// potential stackoverflow here.
+		// after constructing tuples, the hashing should be baked
 		size_t hash = 0;
 		for(size_t i = 0; i < t->len; i++) {
 			// yeah I'm just BS-ing here
 			hash ^= (hash << 3) | quartzI_hash(t->vals[i]);
 		}
-		return t->hash = hash;
+		return t->hash = (hash<<1) | 1;
 	}
 	return (size_t)obj;
 }
@@ -46,6 +48,7 @@ size_t quartzI_memsizeof(quartz_Value val) {
 	if(val.type != QUARTZ_VOBJ) return 0;
 
 	quartz_Object *obj = val.obj;
+	// TODO: memsizeof
 	return 0;
 }
 
@@ -88,8 +91,6 @@ const char *quartz_typenames[QUARTZ_TCOUNT] = {
 	[QUARTZ_TTHREAD] = "thread",
 	[QUARTZ_TUSERDATA] = "userdata",
 };
-
-bool quartzI_equals(quartz_Value a, quartz_Value b);
 
 bool quartzI_isInterpretedFunction(quartz_Value f) {
 	if(f.type == QUARTZ_VCFUNC) return false;

@@ -238,14 +238,17 @@ typedef struct quartz_Userdata {
 	quartz_Value associated[];
 } quartz_Userdata;
 
+
 bool quartzI_validKey(quartz_Value val);
 // used to either bake the hashing (for tuples and strings) or compute it.
 // always bake tuple hashes do avoid stackoverflow exploits!
 size_t quartzI_hash(quartz_Value val);
 size_t quartzI_memsizeof(quartz_Value val);
 quartz_Type quartzI_trueTypeOf(quartz_Value v);
-bool quartzI_equals(quartz_Value a, quartz_Value b);
+quartz_CmpFlags quartzI_compare(quartz_Value a, quartz_Value b);
 bool quartzI_isInterpretedFunction(quartz_Value f);
 quartz_Closure *quartzI_getClosure(quartz_Value f);
+quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key);
+quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v);
 
 #endif

@@ -79,6 +79,18 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 	return err;
 }
 
+quartz_Errno quartz_return(quartz_Thread *Q, int x) {
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	quartz_CallEntry *e = quartzI_getCallEntry(Q, 0);
+	if(e == NULL) return quartz_errorf(Q, QUARTZ_ERUNTIME, "missing call frame");
+	// breaks off any link too
+	Q->stack[e->funcStackIdx] = (quartz_StackEntry) {
+		.isPtr = false,
+		.value = v,
+	};
+	return QUARTZ_OK;
+}
+
 static quartz_Errno quartzI_callCFunc(quartz_Thread *Q, quartz_CFunction *f) {
 	quartz_Errno err = f(Q, quartz_getstacksize(Q));
 	// yielding is not handled yet so just always pop

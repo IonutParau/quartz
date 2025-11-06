@@ -487,3 +487,61 @@ quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err) {
 	*err = QUARTZ_OK;
 	return v.complex;
 }
+
+// get the length (for tuple, array, map and struct)
+size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	if(v.type == QUARTZ_VOBJ) {
+		quartz_Object *o = v.obj;
+		if(o->type == QUARTZ_OLIST) {
+			quartz_List *l = (quartz_List *)o;
+			return l->len;
+		}
+		if(o->type == QUARTZ_OSET) {
+			quartz_Set *s = (quartz_Set *)o;
+			return s->len;
+		}
+		if(o->type == QUARTZ_OTUPLE) {
+			quartz_Tuple *t = (quartz_Tuple *)o;
+			return t->len;
+		}
+		if(o->type == QUARTZ_OMAP) {
+			quartz_Map *m = (quartz_Map *)o;
+			// this isn't the amount of pairs alive
+			// TODO: re-evaluate this behavior
+			return m->filledAmount;
+		}
+	}
+	*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenameof(Q, x));
+	return 0;
+}
+
+// get the capacity (for array and map)
+size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err) {
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	if(v.type == QUARTZ_VOBJ) {
+		quartz_Object *o = v.obj;
+		if(o->type == QUARTZ_OLIST) {
+			quartz_List *l = (quartz_List *)o;
+			return l->cap;
+		}
+		if(o->type == QUARTZ_OSET) {
+			quartz_Set *s = (quartz_Set *)o;
+			return s->cap;
+		}
+		if(o->type == QUARTZ_OTUPLE) {
+			quartz_Tuple *t = (quartz_Tuple *)o;
+			return t->len;
+		}
+		if(o->type == QUARTZ_OMAP) {
+			quartz_Map *m = (quartz_Map *)o;
+			return m->capacity;
+		}
+	}
+	*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenameof(Q, x));
+	return 0;
+}
+
+size_t quartz_memsizeof(quartz_Thread *Q, int x) {
+	return quartzI_memsizeof(quartzI_getStackValue(Q, x));
+}
