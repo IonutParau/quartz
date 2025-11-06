@@ -18,12 +18,26 @@ static quartz_Errno testPrint(quartz_Thread *Q, size_t argc) {
 
 static quartz_Errno testStuff(quartz_Thread *Q) {
 	quartz_Errno err;
+	// load print global
+	err = quartz_pushglobals(Q);
+	if(err) return err;
+	err = quartz_pushstring(Q, "print");
+	if(err) return err;
 	err = quartz_pushcfunction(Q, testPrint);
+	if(err) return err;
+	err = quartz_setindex(Q);
+	if(err) return err;
+
+	// call print("Hello, world!")
+	err = quartz_pushglobals(Q);
+	if(err) return err;
+	err = quartz_pushstring(Q, "print");
+	if(err) return err;
+	err = quartz_getindex(Q);
 	if(err) return err;
 	err = quartz_pushstring(Q, "Hello, world!");
 	if(err) return err;
-	err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-	return QUARTZ_OK;
+	return quartz_call(Q, 1, QUARTZ_CALL_STATIC);
 }
 
 int main(int argc, char **argv) {
@@ -37,7 +51,8 @@ int main(int argc, char **argv) {
 
 	quartz_Errno err = testStuff(Q);
 	if(err) {
-		printf("Error: %d\n", err);
+		quartz_pusherror(Q);
+		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
 		return 1;
 	}
 

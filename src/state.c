@@ -426,6 +426,22 @@ quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f) {
 	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VCFUNC, .func = f});
 }
 
+static quartz_Errno quartzI_pushRawMap(quartz_Thread *Q, quartz_Map *map) {
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &map->obj});
+}
+
+quartz_Errno quartz_pushregistry(quartz_Thread *Q) {
+	return quartzI_pushRawMap(Q, Q->gState->registry);
+}
+
+quartz_Errno quartz_pushglobals(quartz_Thread *Q) {
+	return quartzI_pushRawMap(Q, Q->gState->globals);
+}
+
+quartz_Errno quartz_pushloaded(quartz_Thread *Q) {
+	return quartzI_pushRawMap(Q, Q->gState->loaded);
+}
+
 quartz_Errno quartz_pushvalue(quartz_Thread *Q, int idx) {
 	return quartzI_pushRawValue(Q, quartzI_getStackValue(Q, idx));
 }
@@ -448,6 +464,41 @@ quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected) {
 		return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s expected, got %s", quartz_typenames[expected], quartz_typenames[actual]);
 	}
 	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_stackassert(quartz_Thread *Q, size_t minStack) {
+	size_t actual = quartz_getstacksize(Q);
+	if(actual < minStack) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "stack underflow by %u", (quartz_Uint)(minStack - actual));
+	}
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_getindex(quartz_Thread *Q) {
+	// we take first, then pop after, because of GC.
+	quartz_Errno err;
+	err = quartz_stackassert(Q, 2);
+	if(err) return err;
+	quartz_Value key = quartzI_getStackValue(Q, -1);
+	quartz_Value value = quartzI_getStackValue(Q, -2);
+	quartz_Value out;
+	err = quartzI_getIndex(Q, value, key, &out);
+	if(err) return err;
+	quartzI_setStackValue(Q, -2, out);
+	return quartz_pop(Q);
+}
+
+quartz_Errno quartz_setindex(quartz_Thread *Q) {
+	quartz_Errno err;
+	err = quartz_stackassert(Q, 3);
+	if(err) return err;
+	quartz_Value container = quartzI_getStackValue(Q, -3);
+	quartz_Value key = quartzI_getStackValue(Q, -2);
+	quartz_Value val = quartzI_getStackValue(Q, -1);
+
+	err = quartzI_setIndex(Q, container, key, val);
+	if(err) return err;
+	return quartz_popn(Q, 3);
 }
 
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err) {

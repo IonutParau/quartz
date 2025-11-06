@@ -95,6 +95,11 @@ typedef quartz_Errno (quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz
 quartz_Thread *quartz_newThread(quartz_Context *ctx);
 void quartz_destroyThread(quartz_Thread *Q);
 
+// TODO: loading more of stdlib
+quartz_Errno quartz_openstdlib(quartz_Thread *Q);
+quartz_Errno quartz_openlibcore(quartz_Thread *Q);
+quartz_Errno quartz_openlibio(quartz_Thread *Q);
+
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
 
@@ -251,6 +256,7 @@ typedef enum quartz_CmpFlags {
 quartz_Type quartz_typeof(quartz_Thread *Q, int x);
 const char *quartz_typenameof(quartz_Thread *Q, int x);
 quartz_Errno quartz_typeassert(quartz_Thread *Q, int x, quartz_Type expected);
+quartz_Errno quartz_stackassert(quartz_Thread *Q, size_t minStack);
 // pop key, then pop value, and push value[key]
 quartz_Errno quartz_getindex(quartz_Thread *Q);
 // pop value, push value[field]
@@ -269,6 +275,7 @@ quartz_Errno quartz_setlfield(quartz_Thread *Q, const char *field, size_t len);
 quartz_Errno quartz_seti(quartz_Thread *Q, quartz_Uint idx);
 // pop n values, then append them into the array at the new top.
 // In the case of a tuple, it does not error. Instead, the tuple is overwritten with a new tuple, containing the new values.
+// Can also be used on sets.
 quartz_Errno quartz_append(quartz_Thread *Q, size_t n);
 // on the stack should be (from top to bottom), value, key then container. Key of nil means start of the iteration.
 // Key should be set to null at the start, to indicate the start of the iteration.

@@ -1,4 +1,5 @@
 #include "value.h"
+#include "quartz.h"
 #include <math.h>
 
 bool quartzI_validKey(quartz_Value val) {
@@ -148,7 +149,27 @@ quartz_CmpFlags quartzI_compare(quartz_Value a, quartz_Value b) {
 		}
 	}
 	if(a.type == QUARTZ_VOBJ && b.type == QUARTZ_VOBJ) {
-		if(a.obj == b.obj) flags |= QUARTZ_CMP_EQUAL;
+		quartz_Object *oA = a.obj;
+		quartz_Object *oB = b.obj;
+		if(oA == oB) flags |= QUARTZ_CMP_EQUAL;
+		else if(oA->type == QUARTZ_OSTR && oB->type == QUARTZ_OSTR) {
+			quartz_String *sA = (quartz_String *)oA;
+			quartz_String *sB = (quartz_String *)oB;
+			
+			int cmp = 0;
+			size_t len = sA->len > sB->len ? sA->len : sB->len;
+			for(size_t i = 0; i < len; i++) {
+				unsigned char a = sA->buf[i];
+				unsigned char b = sB->buf[i];
+				if((cmp = b - a)) {
+					break;
+				}
+			}
+		
+			if(cmp == 0) flags |= QUARTZ_CMP_EQUAL;
+			if(cmp < 0) flags |= QUARTZ_CMP_LESS;
+			if(cmp > 0) flags |= QUARTZ_CMP_GREATER;
+		}
 	}
 	return flags;
 }
@@ -193,6 +214,7 @@ quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key) {
 	size_t left = m->capacity;
 	while(left > 0) {
 		i %= m->capacity;
+		// unallocated
 		if(m->pairs[i].key.type == QUARTZ_VNULL) break;
 		if(quartzI_compare(m->pairs[i].key, key) & QUARTZ_CMP_EQUAL) {
 			return m->pairs[i].val;
@@ -203,8 +225,62 @@ quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key) {
 	return (quartz_Value) {.type = QUARTZ_VNULL};
 }
 
+// returns whether it allocated new space
+static bool quartzI_mapPutInArray(quartz_MapPair *pairs, size_t cap, quartz_Value key, quartz_Value val) {
+	// assumes there is always free space, basically, that allocated space is less than capacity
+	size_t i = quartzI_hash(key);
+	while(true) {
+		i %= cap;
+		if(pairs[i].key.type == QUARTZ_VNULL) {
+			// unallocated space!!!
+			pairs[i].key = key;
+			pairs[i].val = val;
+			return true;
+		}
+		if(pairs[i].val.type == QUARTZ_VNULL) {
+			pairs[i].key = key;
+			pairs[i].val = val;
+			return false;
+		}
+		if(quartzI_compare(pairs[i].key, key)) {
+			pairs[i].val = val;
+			return false;
+		}
+		i++;
+	}
+	return false;
+}
+
+bool quartzI_isLegalPair(quartz_MapPair pair) {
+	return pair.key.type != QUARTZ_VNULL && pair.val.type != QUARTZ_VNULL;
+}
+
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v) {
-	return quartz_errorf(Q, QUARTZ_ERUNTIME, "not implemented yet");
+	size_t idealMaxAllocated = m->capacity * 80 / 100;
+	if(m->filledAmount >= idealMaxAllocated) {
+		// welp, time to re-size.
+		size_t newCap = m->capacity * 2;
+		quartz_MapPair *newBuf = quartz_alloc(Q, newCap * sizeof(*newBuf));
+		if(newBuf == NULL) return quartz_oom(Q);
+		for(size_t i = 0; i < newCap; i++) {
+			newBuf[i].key.type = QUARTZ_VNULL;
+			newBuf[i].val.type = QUARTZ_VNULL;
+		}
+		size_t newSpaceAllocated = 0;
+		for(size_t i = 0; i < m->capacity; i++) {
+			if(quartzI_isLegalPair(m->pairs[i])) {
+				if(quartzI_mapPutInArray(newBuf, newCap, m->pairs[i].key, m->pairs[i].val)) newSpaceAllocated++;
+			}
+		}
+		quartz_free(Q, m->pairs, sizeof(quartz_MapPair) * m->capacity);
+		m->pairs = newBuf;
+		m->capacity = newCap;
+		m->filledAmount = newSpaceAllocated;
+	}
+	if(quartzI_mapPutInArray(m->pairs, m->capacity, key, v)) {
+		m->filledAmount++;
+	}
+	return QUARTZ_OK;
 }
 
 quartz_Errno quartzI_getIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value *val) {
@@ -264,13 +340,7 @@ quartz_Errno quartzI_setIndex(quartz_Thread *Q, quartz_Value container, quartz_V
 		goto ok;
 	}
 	if(o->type == QUARTZ_OTUPLE) {
-		quartz_Tuple *t = (quartz_Tuple *)o;
-		if(key.type != QUARTZ_VINT) goto badKeyType;
-		if(key.integer < 0 || key.integer >= t->len) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "index out of bounds");
-		}
-		t->vals[key.integer] = val;
-		goto ok;
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "tuples are immutable");
 	}
 	if(o->type == QUARTZ_OSET) {
 		quartz_Set *l = (quartz_Set *)o;

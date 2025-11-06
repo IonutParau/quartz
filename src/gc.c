@@ -79,7 +79,7 @@ quartz_String *quartzI_newCString(quartz_Thread *Q, const char *s) {
 }
 
 quartz_List *quartzI_newList(quartz_Thread *Q, size_t cap) {
-	if(cap == 0) cap = 1;
+	if(cap == 0) cap = 8;
 	quartz_Value *buf = quartz_alloc(Q, sizeof(quartz_Value) * cap);
 	if(buf == NULL) return NULL;
 	quartz_List *l = (quartz_List *)quartzI_allocObject(Q, QUARTZ_OLIST, sizeof(*l));
