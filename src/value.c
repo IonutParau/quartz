@@ -207,6 +207,28 @@ quartz_Closure *quartzI_getClosure(quartz_Value f) {
 	return (quartz_Closure *)f.obj;
 }
 
+quartz_Function *quartzI_getFunction(quartz_Value f) {
+	if(f.type != QUARTZ_VOBJ) return NULL;
+	quartz_Object *o = f.obj;
+	if(o->type == QUARTZ_OCLOSURE) {
+		quartz_Closure *c = (quartz_Closure *)o;
+		return quartzI_getFunction(c->f);
+	}
+	if(o->type != QUARTZ_OFUNCTION) return NULL;
+	return (quartz_Function *)o;
+}
+
+quartz_CFunction *quartzI_getCFunction(quartz_Value f) {
+	if(f.type == QUARTZ_VOBJ) {
+		quartz_Object *o = f.obj;
+		if(o->type != QUARTZ_OCLOSURE) return NULL;
+		quartz_Closure *c = (quartz_Closure *)o;
+		return quartzI_getCFunction(c->f);
+	}
+	if(f.type != QUARTZ_VCFUNC) return NULL;
+	return f.func;
+}
+
 quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key) {
 	if(!quartzI_validKey(key)) return (quartz_Value) {.type = QUARTZ_VNULL};
 	size_t hash = quartzI_hash(key);
@@ -242,7 +264,7 @@ static bool quartzI_mapPutInArray(quartz_MapPair *pairs, size_t cap, quartz_Valu
 			pairs[i].val = val;
 			return false;
 		}
-		if(quartzI_compare(pairs[i].key, key)) {
+		if(quartzI_compare(pairs[i].key, key) & QUARTZ_CMP_EQUAL) {
 			pairs[i].val = val;
 			return false;
 		}

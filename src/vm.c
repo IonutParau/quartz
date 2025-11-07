@@ -117,9 +117,5 @@ quartz_Errno quartzI_runTopEntry(quartz_Thread *Q) {
 		// continuation
 		return e->c.k(Q, QUARTZ_OK, e->c.ku);
 	}
-	quartz_Closure *c = quartzI_getClosure(e->f);
-	if(c == NULL) {
-		return quartzI_callCFunc(Q, e->f.func);
-	}
-	return quartzI_callCFunc(Q, c->f.func);
+	return quartzI_callCFunc(Q, quartzI_getCFunction(e->f));
 }

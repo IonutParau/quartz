@@ -106,7 +106,7 @@ typedef enum quartz_UpvalueType {
 typedef struct quartz_Upvalue {
 	quartz_String *name;
 	quartz_UpvalueType upvalType;
-	quartz_Value val;
+	int stackIndex;
 } quartz_Upvalue;
 
 typedef enum quartz_FunctionFlags {
@@ -133,6 +133,10 @@ typedef struct quartz_Function {
 	// ordered weirdly to ensure most useful data is in cache
 	size_t codesize;
 	quartz_Instruction *code;
+	size_t constCount;
+	quartz_Value *consts;
+	size_t upvalCount;
+	quartz_Upvalue *upvaldefs;
 	int flags;
 	int argc;
 	quartz_Map *module;
@@ -140,15 +144,13 @@ typedef struct quartz_Function {
 	quartz_String *chunkname;
 	// how much to preallocate
 	size_t stacksize;
-	size_t constCount;
-	quartz_Value *consts;
 } quartz_Function;
 
 typedef struct quartz_Closure {
 	quartz_Object obj;
 	size_t len;
 	quartz_Value f;
-	quartz_Upvalue ups[];
+	quartz_Value ups[];
 } quartz_Closure;
 
 typedef struct quartz_Pointer {
@@ -247,6 +249,8 @@ quartz_Type quartzI_trueTypeOf(quartz_Value v);
 quartz_CmpFlags quartzI_compare(quartz_Value a, quartz_Value b);
 bool quartzI_isInterpretedFunction(quartz_Value f);
 quartz_Closure *quartzI_getClosure(quartz_Value f);
+quartz_Function *quartzI_getFunction(quartz_Value f);
+quartz_CFunction *quartzI_getCFunction(quartz_Value f);
 quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key);
 bool quartzI_isLegalPair(quartz_MapPair pair);
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v);

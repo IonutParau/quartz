@@ -260,6 +260,43 @@ quartz_Value quartzI_getStackValue(quartz_Thread *Q, int x) {
 	return entry.value;
 }
 
+quartz_Pointer *quartzI_getStackValuePointer(quartz_Thread *Q, int x, quartz_Errno *err) {
+	size_t off = quartzI_stackFrameOffset(Q);
+	size_t size = quartz_getstacksize(Q);
+	*err = QUARTZ_OK;
+
+	quartz_Value null = {.type = QUARTZ_VNULL};
+	if(x < 0) {
+		x += size;
+		if(x < 0) {
+			*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad stack index: %d", (quartz_Int)x);
+			return NULL; // underflow
+		}
+	}
+	size_t i = off + x;
+	if(i >= Q->stackLen) {
+		*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad stack index: %d", (quartz_Int)x);
+		return NULL;
+	}
+	quartz_StackEntry entry = Q->stack[i];
+	if(entry.isPtr) {
+		quartz_Pointer *p = (quartz_Pointer *)entry.value.obj;
+		return p;
+	}
+	quartz_Pointer *p = quartzI_newPointer(Q);
+	if(p == NULL) {
+		*err = quartz_oom(Q);
+		return NULL;
+	}
+	p->val = entry.value;
+	Q->stack[i] = (quartz_StackEntry) {
+		.isPtr = true,
+		.value.type = QUARTZ_VOBJ,
+		.value.obj = &p->obj,
+	};
+	return p;
+}
+
 void quartzI_setStackValue(quartz_Thread *Q, int x, quartz_Value v) {
 	size_t off = quartzI_stackFrameOffset(Q);
 	size_t size = quartz_getstacksize(Q);
@@ -448,6 +485,13 @@ quartz_Errno quartz_pushvalue(quartz_Thread *Q, int idx) {
 
 quartz_Errno quartz_pusherror(quartz_Thread *Q) {
 	return quartzI_pushRawValue(Q, Q->errorValue);
+}
+
+quartz_Errno quartz_pushpointer(quartz_Thread *Q, int x) {
+	quartz_Errno err;
+	quartz_Pointer *p = quartzI_getStackValuePointer(Q, x, &err);
+	if(err) return err;
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &p->obj});
 }
 
 quartz_Type quartz_typeof(quartz_Thread *Q, int x) {
