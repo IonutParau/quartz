@@ -68,6 +68,46 @@ typedef double (*quartz_Clockf)(void *userdata);
 // returns the current UNIX timestamp
 typedef size_t (*quartz_Timef)(void *userdata);
 
+typedef enum quartz_FsAction {
+	// open a file. buf should be cast to a string, and *buflen would be the length. *buflen should not be changed.
+	// *fileData is a quartz_FileMode *, and the file mode should be respected.
+	// If QUARTZ_FILE_BINARY is not specified, the file should be open in an applicable text mode.
+	QUARTZ_FS_OPEN,
+	// close a file. *fileData may be changed but doing so is pointless.
+	QUARTZ_FS_CLOSE,
+	// read a file. *fileData should not be changed. *buflen should be changed to signify how much data was read. The data should be put in buf.
+	QUARTZ_FS_READ,
+	// write to a file. *fileData should not be changed. *buflen should be changed to signify how much data was written. The data is in buf.
+	QUARTZ_FS_WRITE,
+	// seek a file. *fileData should not be changed. *buflen should be set to the new cursor. buf points to a quartz_FsSeekArg.
+	QUARTZ_FS_SEEK,
+	// TODO: directory listing
+} quartz_FsAction;
+
+typedef enum quartz_FsSeekWhence {
+	// set to off
+	QUARTZ_SEEK_SET,
+	// offset current by off
+	QUARTZ_SEEK_CUR,
+	// set to end - off.
+	QUARTZ_SEEK_END,
+} quartz_FsSeekWhence;
+
+typedef struct quartz_FsSeekArg {
+	quartz_FsSeekWhence whence;
+	quartz_Int off;
+} quartz_FsSeekArg;
+
+typedef enum quartz_FileMode {
+	QUARTZ_FILE_READABLE = 1<<0,
+	QUARTZ_FILE_WRITABLE = 1<<1,
+	QUARTZ_FILE_APPEND = 1<<2,
+	QUARTZ_FILE_BINARY = 1<<3,
+} quartz_FileMode;
+
+typedef quartz_Errno (*quartz_Filef)(quartz_Thread *Q, void **fileData, quartz_FsAction action, void *buf, size_t *buflen);
+
+typedef struct quartz_File quartz_File;
 typedef struct quartz_Context quartz_Context;
 
 size_t quartz_sizeOfContext();
@@ -99,6 +139,7 @@ void quartz_destroyThread(quartz_Thread *Q);
 quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
+quartz_Errno quartz_openlibfs(quartz_Thread *Q);
 
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
@@ -232,6 +273,8 @@ quartz_Errno quartz_pushvalue(quartz_Thread *Q, int idx);
 quartz_Errno quartz_pushresult(quartz_Thread *Q, bool ok);
 // push current error
 quartz_Errno quartz_pusherror(quartz_Thread *Q);
+// push pointer to a value. All pointers to the value point to the same value.
+quartz_Errno quartz_pushpointer(quartz_Thread *Q, int x);
 
 // basic stack ops
 quartz_Errno quartz_swap(quartz_Thread *Q, int a, int b);
@@ -294,6 +337,14 @@ void quartz_seterrorhandler(quartz_Thread *Q);
 quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags);
 // return a value from a call
 quartz_Errno quartz_return(quartz_Thread *Q, int x);
+// set something to the current value of an upvalue
+quartz_Errno quartz_loadUpval(quartz_Thread *Q, size_t upval, int x);
+// store something in an upvalue
+quartz_Errno quartz_storeUpval(quartz_Thread *Q, size_t upval, int x);
+// set val to *ptr
+quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val);
+// set *ptr to val
+quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val);
 
 // getting data out
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);

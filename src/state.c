@@ -501,6 +501,27 @@ quartz_Errno quartz_setindex(quartz_Thread *Q) {
 	return quartz_popn(Q, 3);
 }
 
+quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val) {
+	quartz_Errno err;
+	err = quartz_typeassert(Q, ptr, QUARTZ_TPOINTER);
+	if(err) return err;
+	quartz_Value p = quartzI_getStackValue(Q, ptr);
+	quartz_Pointer *pPtr = (quartz_Pointer *)p.obj;
+	quartzI_setStackValue(Q, val, pPtr->val);
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val) {
+	quartz_Errno err;
+	err = quartz_typeassert(Q, ptr, QUARTZ_TPOINTER);
+	if(err) return err;
+	quartz_Value p = quartzI_getStackValue(Q, ptr);
+	quartz_Pointer *pPtr = (quartz_Pointer *)p.obj;
+	quartz_Value v = quartzI_getStackValue(Q, val);
+	pPtr->val = v;
+	return QUARTZ_OK;
+}
+
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err) {
 	return quartz_tolstring(Q, x, NULL, err);
 }
