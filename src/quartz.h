@@ -70,9 +70,14 @@ typedef size_t (*quartz_Timef)(void *userdata);
 
 typedef enum quartz_FsAction {
 	// open a file. buf should be cast to a string, and *buflen would be the length. *buflen should not be changed.
-	// *fileData is a quartz_FileMode *, and the file mode should be respected.
+	// buf is a quartz_FileMode *, and the file mode should be respected.
+	// *fileData should be set to a pointer to the new file, whatever type it may be.
 	// If QUARTZ_FILE_BINARY is not specified, the file should be open in an applicable text mode.
 	QUARTZ_FS_OPEN,
+	// should only change *fileData, and set it to a pointer to be used as the stdin.
+	// buf points to a quartz_StdFile.
+	// The file opened CAN STILL BE CLOSED, but should not be.
+	QUARTZ_FS_STDFILE,
 	// close a file. *fileData may be changed but doing so is pointless.
 	QUARTZ_FS_CLOSE,
 	// read a file. *fileData should not be changed. *buflen should be changed to signify how much data was read. The data should be put in buf.
@@ -105,16 +110,45 @@ typedef enum quartz_FileMode {
 	QUARTZ_FILE_BINARY = 1<<3,
 } quartz_FileMode;
 
-typedef quartz_Errno (*quartz_Filef)(quartz_Thread *Q, void **fileData, quartz_FsAction action, void *buf, size_t *buflen);
+typedef enum quartz_StdFile {
+	QUARTZ_STDIN = 0,
+	QUARTZ_STDOUT,
+	QUARTZ_STDERR,
+
+	// for internal purposes
+	QUARTZ_STDFILE_COUNT,
+} quartz_StdFile;
+
+typedef enum quartz_FsBufMode {
+	QUARTZ_FS_NOBUF,
+	QUARTZ_FS_LINEBUF,
+	QUARTZ_FS_FULLBUF,
+} quartz_FsBufMode;
+
+typedef quartz_Errno (*quartz_Filef)(quartz_Thread *Q, void *userdata, void **fileData, quartz_FsAction action, void *buf, size_t *buflen);
 
 typedef struct quartz_File quartz_File;
 typedef struct quartz_Context quartz_Context;
 
 size_t quartz_sizeOfContext();
 void quartz_initContext(quartz_Context *ctx, void *userdata);
-void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf *alloc);
-void quartz_setClock(quartz_Context *ctx, quartz_Clockf *clock);
-void quartz_setTime(quartz_Context *ctx, quartz_Timef *time);
+void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc);
+void quartz_setClock(quartz_Context *ctx, quartz_Clockf clock);
+void quartz_setTime(quartz_Context *ctx, quartz_Timef time);
+void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file);
+
+// For those who are confused, because we do not necessarily have a libc running
+// we implement our own file abstraction layer and buffering.
+
+quartz_File *quartz_fopen(quartz_Thread *Q, quartz_FileMode mode, quartz_Errno *err);
+void quartz_fclose(quartz_Thread *Q, quartz_File *f);
+quartz_Errno quartz_fwrite(quartz_Thread *Q, quartz_File *f, const void *buf, size_t *buflen);
+quartz_Errno quartz_fread(quartz_Thread *Q, quartz_File *f, void *buf, size_t *buflen);
+quartz_Errno quartz_fseek(quartz_Thread *Q, quartz_File *f, quartz_FsSeekWhence whence, quartz_Int off);
+// if size is 0, the buffer size is unchanged
+quartz_Errno quartz_fsetvbuf(quartz_Thread *Q, quartz_File *f, quartz_FsBufMode bufMode, size_t size);
+// if f is not NULL, the stdFile will be changed to f.
+quartz_File *quartz_fstdfile(quartz_Thread *Q, quartz_StdFile stdFile, quartz_File *f);
 
 typedef quartz_Errno (quartz_CFunction)(quartz_Thread *Q, size_t argc);
 typedef quartz_Errno (quartz_KFunction)(quartz_Thread *Q, quartz_Errno state, void *context);

@@ -11,12 +11,8 @@ quartz_Node *quartzI_allocAST(quartz_Thread *Q, quartz_NodeType type, unsigned i
 	n->str = str;
 	n->strlen = strlen;
 	n->childCount = 0;
-	n->childCap = 1;
-	n->children = quartz_alloc(Q, sizeof(n->children[0]) * n->childCap);
-	if(n->children == NULL) {
-		quartz_free(Q, n, sizeof(*n));
-		return NULL;
-	}
+	n->childCap = 0;
+	n->children = NULL;
 	return n;
 }
 
@@ -29,6 +25,11 @@ void quartzI_freeAST(quartz_Thread *Q, quartz_Node *node) {
 }
 
 quartz_Errno quartzI_addNodeChild(quartz_Thread *Q, quartz_Node *node, quartz_Node *child) {
+	if(node->childCap == 0) {
+		node->children = quartz_alloc(Q, sizeof(quartz_Node *));
+		if(node->children == NULL) return QUARTZ_ENOMEM;
+		node->childCap = 1;
+	}
 	if(node->childCount == node->childCap) {
 		size_t newCap = node->childCap * 2;
 		quartz_Node **newBuf = quartz_realloc(Q, node->children, sizeof(quartz_Node *) * node->childCap, sizeof(quartz_Node *) * newCap);

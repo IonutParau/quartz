@@ -57,13 +57,14 @@ int main(int argc, char **argv) {
 	}
 
 	quartz_Buffer buf;
-	quartz_bufinit(Q, &buf, 1024);
+	quartz_bufinit(Q, &buf, 64);
 	quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
-	quartz_bufputs(&buf, "# comment\n");
-	quartz_bufputs(&buf, "local x = 53\n");
-	quartz_bufputs(&buf, "local y = (21 + 2i)\n");
-	quartz_bufputs(&buf, "local z = \"hi\"\n");
-	quartz_bufputs(&buf, "io[\"writeln\"](x + y, z)\n");
+	// commented out because we will handle compiling these later
+	//quartz_bufputs(&buf, "# comment\n");
+	//quartz_bufputs(&buf, "local x = 53\n");
+	//quartz_bufputs(&buf, "local y = (21 + 2i)\n");
+	//quartz_bufputs(&buf, "local z = \"hi\"\n");
+	//quartz_bufputs(&buf, "io[\"writeln\"](x + y, z)\n");
 
 	char *s = quartz_bufstr(&buf, NULL);
 

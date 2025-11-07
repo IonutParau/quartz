@@ -47,3 +47,19 @@ double quartz_rawClock(quartz_Context *ctx) {
 size_t quartz_rawTime(quartz_Context *ctx) {
 	return ctx->time(ctx->userdata);
 }
+
+void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc) {
+	ctx->alloc = alloc;
+}
+
+void quartz_setClock(quartz_Context *ctx, quartz_Clockf clock) {
+	ctx->clock = clock;
+}
+
+void quartz_setTime(quartz_Context *ctx, quartz_Timef time) {
+	ctx->time = time;
+}
+
+void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file) {
+	ctx->fs = file;
+}

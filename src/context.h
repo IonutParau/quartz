@@ -8,6 +8,7 @@ typedef struct quartz_Context {
 	quartz_Allocf alloc;
 	quartz_Clockf clock;
 	quartz_Timef time;
+	quartz_Filef fs;
 } quartz_Context;
 
 void *quartz_rawAlloc(quartz_Context *ctx, size_t size);
