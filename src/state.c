@@ -52,8 +52,16 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	gState->resultFields->vals[0].obj = &quartzI_newCString(Q, "value")->obj;
 	gState->resultFields->vals[1].type = QUARTZ_VOBJ;
 	gState->resultFields->vals[1].obj = &quartzI_newCString(Q, "error")->obj;
+	
+	// stdio is opened when opening fs libs
+	for(size_t i = 0; i < QUARTZ_STDFILE_COUNT; i++) {
+		gState->stdfiles[i] = NULL;
+	}
 
 	gState->gcBlocked = false; // memory can be reclaimed now
+
+	// basic setup (no stdio)
+	quartzI_emptyTemporaries(Q);
 	return Q;
 }
 

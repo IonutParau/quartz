@@ -149,6 +149,9 @@ quartz_Errno quartz_fseek(quartz_Thread *Q, quartz_File *f, quartz_FsSeekWhence 
 quartz_Errno quartz_fsetvbuf(quartz_Thread *Q, quartz_File *f, quartz_FsBufMode bufMode, size_t size);
 // if f is not NULL, the stdFile will be changed to f.
 quartz_File *quartz_fstdfile(quartz_Thread *Q, quartz_StdFile stdFile, quartz_File *f);
+// open the stdio files and set them. This is not done automatically, as
+// not all environments may have stdio.
+void quartz_fopenstdio(quartz_Thread *Q);
 
 typedef quartz_Errno (quartz_CFunction)(quartz_Thread *Q, size_t argc);
 typedef quartz_Errno (quartz_KFunction)(quartz_Thread *Q, quartz_Errno state, void *context);

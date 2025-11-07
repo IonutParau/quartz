@@ -180,6 +180,7 @@ typedef struct quartz_GlobalState {
 	quartz_Value badErrorValue;
 	// the error object used when we run out of memory (preallocated, obviously)
 	quartz_Value oomValue;
+	quartz_File *stdfiles[QUARTZ_STDFILE_COUNT];
 	bool gcBlocked;
 	quartz_Object *tmpArr[QUARTZ_MAX_TMP];
 	size_t tmpArrSize;
