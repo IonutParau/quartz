@@ -1,3 +1,4 @@
+#include "ops.h"
 #include "quartz.h"
 #include "value.h"
 #include "state.h"
@@ -67,10 +68,13 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 	}
 	err = quartzI_addCallEntry(Q, &e);
 	if(err) return err;
-	quartzI_setStackValue(Q, -argc - 1, (quartz_Value) {.type = QUARTZ_VNULL});
-	if(!quartzI_isInterpretedFunction(f) || !wasFromInterpreter) {
-		err = quartzI_runTopEntry(Q);
-	}
+	// breaks off links
+	Q->stack[funcIdx] = (quartz_StackEntry) {
+		.isPtr = false,
+		.value.type = QUARTZ_VNULL,
+	};
+	// TODO: make quartzI_vmExec smart enough to not recurse when calling other interpreted functions
+	err = quartzI_runTopEntry(Q);
 	// error setup
 	if(err && !quartz_checkerror(Q)) {
 		return quartz_erroras(Q, err);
@@ -88,6 +92,63 @@ quartz_Errno quartz_return(quartz_Thread *Q, int x) {
 		.value = v,
 	};
 	return QUARTZ_OK;
+}
+
+static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
+	quartz_CallEntry *c = quartzI_getCallEntry(Q, 0);
+	if(!c) return QUARTZ_OK;
+	quartz_Errno err = QUARTZ_OK;
+
+	quartz_Instruction *pc = c->q.pc;
+	quartz_Function *f = quartzI_getFunction(c->f);
+	quartz_Closure *closure = quartzI_getClosure(c->f);
+	while(true) {
+		quartzI_emptyTemporaries(Q);
+		if(pc->op == QUARTZ_OP_NOP) {
+			// nothing
+		} else if(pc->op == QUARTZ_OP_RETMOD) {
+			Q->stack[c->funcStackIdx] = (quartz_StackEntry) {
+				.isPtr = false,
+				.value.type = QUARTZ_VOBJ,
+				.value.obj = &f->obj,
+			};
+			goto done;
+		} else if(pc->op == QUARTZ_OP_PUSHINT) {
+			err = quartz_pushint(Q, pc->sD);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_PUSHCONST) {
+			err = quartzI_pushRawValue(Q, f->consts[pc->uD]);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_GETEXTERN) {
+			quartz_Value key = f->consts[pc->uD];
+			quartz_Value v = quartzI_mapGet(f->module, key);
+			if(v.type == QUARTZ_VNULL) {
+				err = quartzI_pushRawValue(Q, quartzI_mapGet(f->globals, key));
+				if(err) goto done;
+			} else {
+				err = quartzI_pushRawValue(Q, v);
+				if(err) goto done;
+			}
+		} else if(pc->op == QUARTZ_OP_CALL) {
+			err = quartz_call(Q, pc->B, pc->C);
+			if(err) goto done;
+		} else {
+			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
+			goto done;
+		}
+		pc++;
+	}
+
+done:
+	c->q.pc = pc; // useless until we figure out yielding
+	// no yielding yet, so always pop frame
+	if(c->flags & QUARTZ_CALL_STATIC) {
+		Q->stackLen = c->funcStackIdx;
+	} else {
+		Q->stackLen = c->funcStackIdx + 1;
+	}
+	quartzI_popCallEntry(Q);
+	return err;
 }
 
 static quartz_Errno quartzI_callCFunc(quartz_Thread *Q, quartz_CFunction *f) {
@@ -109,8 +170,7 @@ quartz_Errno quartzI_runTopEntry(quartz_Thread *Q) {
 	quartz_CallEntry *e = quartzI_getCallEntry(Q, 0);
 	if(e == NULL) return QUARTZ_OK; // don't ask
 	if(quartzI_isInterpretedFunction(e->f)) {
-		// TODO: specialized function
-		return quartz_errorf(Q, QUARTZ_ERUNTIME, "c functions only for now");
+		return quartz_vmExec(Q);
 	}
 	if(e->c.k != NULL) {
 		// continuation

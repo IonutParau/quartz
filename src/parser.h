@@ -25,7 +25,9 @@ typedef enum quartz_NodeType {
 
 typedef struct quartz_Node {
 	quartz_NodeType type;
-	size_t line;
+	unsigned int line;
+	// for stuff like doing a 2nd pass to fix jumps in loops 
+	unsigned int bytecodeIndex;
 	const char *str;
 	size_t strlen;
 	struct quartz_Node **children;
