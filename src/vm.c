@@ -59,9 +59,8 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 		.flags = flags,
 	};
 	if(quartzI_isInterpretedFunction(f)) {
-		e.q.pc = 0;
-		// technically can be left uninitialized but eh who cares
-		e.q.funcSelected = 0;
+		quartz_Function *q = quartzI_getFunction(f);
+		e.q.pc = q->code;
 	} else {
 		e.c.k = NULL;
 		e.c.ku = NULL;
