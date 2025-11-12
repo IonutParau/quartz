@@ -20,8 +20,8 @@ typedef struct quartz_UpvalDesc {
 	struct quartz_UpvalDesc *next;
 } quartz_UpvalDesc;
 
+// to store and restore
 typedef struct quartz_Scope {
-	quartz_Local *localList;
 	short localc;
 	short stacksize;
 } quartz_Scope;
@@ -40,24 +40,27 @@ typedef struct quartz_Compiler {
 	quartz_Thread *Q;
 	// for outer->scope and outer->constants
 	struct quartz_Compiler *outer;
-	quartz_Scope scope;
+	quartz_Local *localList;
 	quartz_Local *upvalList;
 	quartz_Constants *constants;
 	quartz_Instruction *code;
-	short upvalc;
-	short constantsCount;
-	short curstacksize;
+	unsigned short upvalc;
+	unsigned short localc;
+	unsigned short constantsCount;
+	unsigned short curstacksize;
 	size_t codesize;
 	size_t codecap;
 } quartz_Compiler;
 
-quartz_Errno quartzI_initCompiler(quartz_Thread *Q, quartz_Compiler *c);
-void quartzI_freeFailingCompiler(quartz_Thread *Q, quartz_Compiler *c);
-quartz_Function *quartzI_toFunctionAndFree(quartz_Compiler *c);
+quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c);
+void quartzC_freeFailingCompiler(quartz_Compiler c);
+quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c);
 
-quartz_Errno quartzI_writeInstruction(quartz_Compiler *c, quartz_Instruction inst);
+quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction inst);
 
-quartz_Errno quartzI_pushValue(quartz_Compiler *c, quartz_Node *node);
-quartz_Errno quartzI_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);
+quartz_Value quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
+quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val);
+quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node);
+quartz_Errno quartzC_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);
 
 #endif

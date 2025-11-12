@@ -7,3 +7,4 @@
 #include "vm.c"
 #include "lexer.c"
 #include "parser.c"
+#include "compiler.c"
