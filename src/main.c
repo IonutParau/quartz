@@ -4,6 +4,7 @@
 #include "quartz.h"
 #include "lexer.h"
 #include "parser.h"
+#include "compiler.h"
 
 #define QUARTZ_USE_LIBC
 #include "one.c"
@@ -18,6 +19,7 @@ static quartz_Errno testPrint(quartz_Thread *Q, size_t argc) {
 
 static quartz_Errno testStuff(quartz_Thread *Q) {
 	quartz_Errno err;
+
 	// load print global
 	err = quartz_pushglobals(Q);
 	if(err) return err;
@@ -37,7 +39,46 @@ static quartz_Errno testStuff(quartz_Thread *Q) {
 	if(err) return err;
 	err = quartz_pushstring(Q, "Hello, world!");
 	if(err) return err;
-	return quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+	err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+	if(err) return err;
+	
+	quartz_Compiler c;
+	quartzC_initCompiler(Q, &c);
+	c.argc = 1;
+
+	quartz_String *src = quartzI_newCString(Q, "test");
+	quartz_Map *_G = Q->gState->globals;
+
+	quartzC_addConstant(&c, "a", 1, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &quartzI_newCString(Q, "print")->obj,
+	});
+
+	quartzC_writeInstruction(&c, (quartz_Instruction) {
+		.op = QUARTZ_OP_GETEXTERN,
+		.uD = 0,
+	});
+	quartzC_writeInstruction(&c, (quartz_Instruction) {
+		.op = QUARTZ_OP_LOAD,
+		.uD = 0,
+	});
+	quartzC_writeInstruction(&c, (quartz_Instruction) {
+		.op = QUARTZ_OP_CALL,
+		.B = 1,
+		.C = QUARTZ_CALL_STATIC,
+	});
+	quartzC_writeInstruction(&c, (quartz_Instruction) {
+		.op = QUARTZ_OP_RETMOD,
+	});
+
+	quartz_Function *f = quartzC_toFunctionAndFree(&c, src, _G);
+	err = quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &f->obj});
+	if(err) return err;
+	err = quartz_pushstring(Q, "hi from Quartz!");
+	if(err) return err;
+	err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+	if(err) return err;
+	return QUARTZ_OK;
 }
 
 int main(int argc, char **argv) {

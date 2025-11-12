@@ -26,8 +26,19 @@ quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c) {
 	return QUARTZ_OK;
 }
 
+static void quartzC_freeCompilerNoCode(quartz_Compiler c) {
+	quartz_Thread *Q = c.Q;
+	quartz_Constants *curConst = c.constants;
+	while(curConst) {
+		quartz_Constants *cur = curConst;
+		curConst = curConst->next;
+		quartz_free(Q, cur, sizeof(*cur));
+	}
+}
+
 void quartzC_freeFailingCompiler(quartz_Compiler c) {
 	quartz_free(c.Q, c.code, c.codecap * sizeof(quartz_Instruction));
+	quartzC_freeCompilerNoCode(c);
 }
 
 size_t quartzC_countConstants(quartz_Compiler *c) {
@@ -69,9 +80,13 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *so
 	}
 	f->upvaldefs = upvaldefs;
 
-	// TODO constants
 	quartz_Constants *curConst = quartzC_getConstants(c);
-	f->constCount = 0;
+	quartz_Value *consts = quartz_alloc(Q, sizeof(quartz_Value) * f->constCount);
+	for(size_t i = 0; i < f->constCount; i++, curConst = curConst->next) {
+		consts[f->constCount - i - 1] = curConst->val;
+	}
+	f->consts = consts;
+	quartzC_freeCompilerNoCode(*c);
 	
 	return f;
 }
@@ -87,5 +102,21 @@ quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction ins
 	}
 
 	c->code[c->codesize++] = inst;
+	return QUARTZ_OK;
+}
+
+quartz_Value quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
+
+quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val) {
+	quartz_Thread *Q = c->Q;
+	while(c->outer) c = c->outer;
+	quartz_Constants *newNode = quartz_alloc(Q, sizeof(quartz_Constants));
+	if(newNode == NULL) return quartz_oom(Q);
+	newNode->next = c->constants;
+	newNode->str = str;
+	newNode->strlen = len;
+	newNode->val = val;
+	c->constants = newNode;
+	c->constantsCount++;
 	return QUARTZ_OK;
 }

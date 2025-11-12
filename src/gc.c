@@ -199,5 +199,11 @@ void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj) {
 		size_t pairSize = sizeof(quartz_MapPair) * m->capacity;
 		quartz_free(Q, m->pairs, pairSize);
 		quartz_free(Q, m, sizeof(*m));
+	} else if(obj->type == QUARTZ_OFUNCTION) {
+		quartz_Function *f = (quartz_Function *)obj;
+		quartz_free(Q, f->upvaldefs, sizeof(f->upvaldefs[0]) * f->upvalCount);
+		quartz_free(Q, f->consts, sizeof(f->consts[0]) * f->constCount);
+		quartz_free(Q, f->code, sizeof(f->code[0]) * f->codesize);
+		quartz_free(Q, f, sizeof(*f));
 	}
 }

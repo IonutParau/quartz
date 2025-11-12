@@ -99,9 +99,14 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 	if(!c) return QUARTZ_OK;
 	quartz_Errno err = QUARTZ_OK;
 
+
 	quartz_Instruction *pc = c->q.pc;
 	quartz_Function *f = quartzI_getFunction(c->f);
 	quartz_Closure *closure = quartzI_getClosure(c->f);
+	while(quartz_getstacksize(Q) < f->argc) {
+		err = quartz_pushnull(Q);
+		if(err) return err;
+	}
 	while(true) {
 		quartzI_emptyTemporaries(Q);
 		if(pc->op == QUARTZ_OP_NOP) {
@@ -129,6 +134,9 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 				err = quartzI_pushRawValue(Q, v);
 				if(err) goto done;
 			}
+		} else if(pc->op == QUARTZ_OP_LOAD) {
+			err = quartz_pushvalue(Q, pc->uD);
+			if(err) return err;
 		} else if(pc->op == QUARTZ_OP_CALL) {
 			err = quartz_call(Q, pc->B, pc->C);
 			if(err) goto done;

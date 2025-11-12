@@ -78,11 +78,13 @@ void quartz_destroyThread(quartz_Thread *Q) {
 			quartzI_freeObject(Q, cur);
 		}
 		quartz_Context ctx = s->context;
+		quartz_rawFree(&ctx, Q->call, sizeof(quartz_CallEntry) * Q->callCap);
 		quartz_rawFree(&ctx, Q->stack, sizeof(quartz_StackEntry) * Q->stackCap);
 		quartz_rawFree(&ctx, Q, sizeof(quartz_Thread));
 		quartz_rawFree(&ctx, s, sizeof(quartz_GlobalState));
 		return;
 	}
+	quartz_free(Q, Q->call, sizeof(quartz_CallEntry) * Q->callCap);
 	quartz_free(Q, Q->stack, sizeof(quartz_StackEntry) * Q->stackCap);
 	quartz_free(Q, Q, sizeof(quartz_Thread));
 }

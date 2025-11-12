@@ -195,7 +195,7 @@ const char *quartz_typenames[QUARTZ_TCOUNT] = {
 bool quartzI_isInterpretedFunction(quartz_Value f) {
 	if(f.type == QUARTZ_VCFUNC) return false;
 	if(f.type != QUARTZ_VOBJ) return false;
-	if(f.obj->type == QUARTZ_OFUNCTION) return false;
+	if(f.obj->type == QUARTZ_OFUNCTION) return true;
 	if(f.obj->type != QUARTZ_OCLOSURE) return false;
 	quartz_Closure *c = (quartz_Closure *)f.obj;
 	return quartzI_isInterpretedFunction(c->f);
