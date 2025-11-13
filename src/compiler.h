@@ -61,9 +61,13 @@ size_t quartzC_countConstants(quartz_Compiler *c);
 
 quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction inst);
 
-quartz_Value quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
+// -1 if not found
+quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
 quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val);
+quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t len, size_t *idx);
 quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node);
 quartz_Errno quartzC_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);
+quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node);
+quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree);
 
 #endif

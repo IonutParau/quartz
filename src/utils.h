@@ -18,6 +18,10 @@ void quartzI_memset(void *dest, unsigned char x, size_t len);
 bool quartzI_strleql(const char *a, size_t alen, const char *b, size_t blen);
 bool quartzI_strleqlc(const char *a, size_t alen, const char *b);
 
+// this is how string literals are processed
+size_t quartzI_trueStringLen(const char *literal, size_t len);
+void quartzI_trueStringWrite(char *buf, const char *literal, size_t len);
+
 bool quartzI_iswhitespace(char c);
 bool quartzI_isalpha(char c);
 bool quartzI_isnum(char c);

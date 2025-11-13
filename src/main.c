@@ -81,6 +81,34 @@ static quartz_Errno testStuff(quartz_Thread *Q) {
 	return QUARTZ_OK;
 }
 
+static quartz_Errno testCompiler(quartz_Thread *Q, quartz_Node *ast) {
+	quartz_Compiler c;
+	c.Q = NULL;
+	quartz_Errno err = QUARTZ_OK;
+	err = quartzC_initCompiler(Q, &c);
+	if(err) goto cleanup;
+	err = quartzC_compileProgram(&c, ast);
+	if(err) goto cleanup;
+	quartz_String *s = quartzI_newCString(Q, "test script");
+	if(s == NULL) {
+		err = quartz_oom(Q);
+		goto cleanup;
+	}
+	quartz_Function *f = quartzC_toFunctionAndFree(&c, s, Q->gState->globals);
+	c.Q = NULL;
+	if(f == NULL) {
+		err = quartz_oom(Q);
+		goto cleanup;
+	}
+	err = quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &f->obj});
+	if(err) goto cleanup;
+	err = quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+	if(err) goto cleanup;
+cleanup:
+	if(err && c.Q == Q) quartzC_freeFailingCompiler(c);
+	return err;
+}
+
 int main(int argc, char **argv) {
 	size_t cSize = quartz_sizeOfContext();
 	char cMem[cSize];
@@ -99,7 +127,8 @@ int main(int argc, char **argv) {
 
 	quartz_Buffer buf;
 	quartz_bufinit(Q, &buf, 64);
-	quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
+	quartz_bufputs(&buf, "print(\"Hello, world!\")\n");
+	//quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
 	// commented out because we will handle compiling these later
 	//quartz_bufputs(&buf, "# comment\n");
 	//quartz_bufputs(&buf, "local x = 53\n");
@@ -145,6 +174,14 @@ int main(int argc, char **argv) {
 	quartzI_dumpAST(&buf, ast);
 
 	printf("%.*s\n", (int)buf.len, buf.buf);
+	
+	err = testCompiler(Q, ast);
+	if(err) {
+		quartz_pusherror(Q);
+		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
+		return 1;
+	}
+
 	quartzI_freeAST(Q, ast);
 	quartz_bufdestroy(&buf);
 	quartz_strfree(Q, s);

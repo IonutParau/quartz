@@ -1,5 +1,6 @@
 #include "quartz.h"
 #include "parser.h"
+#include "utils.h"
 #include "value.h"
 #include "compiler.h"
 #include "gc.h"
@@ -34,6 +35,7 @@ static void quartzC_freeCompilerNoCode(quartz_Compiler c) {
 		curConst = curConst->next;
 		quartz_free(Q, cur, sizeof(*cur));
 	}
+	c.constants = NULL;
 }
 
 void quartzC_freeFailingCompiler(quartz_Compiler c) {
@@ -105,7 +107,19 @@ quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction ins
 	return QUARTZ_OK;
 }
 
-quartz_Value quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
+quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len) {
+	while(c->outer) c = c->outer;
+	quartz_Constants *list = c->constants;
+	size_t i = 0;
+	while(list) {
+		if(quartzI_strleql(list->str, list->strlen, str, len)) {
+			return c->constantsCount - i - 1;
+		}
+		list = list->next;
+		i++;
+	}
+	return -1;
+}
 
 quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val) {
 	quartz_Thread *Q = c->Q;
@@ -118,5 +132,103 @@ quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len
 	newNode->val = val;
 	c->constants = newNode;
 	c->constantsCount++;
+	return QUARTZ_OK;
+}
+
+static quartz_Errno quartzC_pushChildArray(quartz_Compiler *c, quartz_Node *node) {
+	quartz_Errno err = QUARTZ_OK;
+	for(size_t i = 0; i < node->childCount; i++) {
+		err = quartzC_pushValue(c, node->children[i]);
+		if(err) return err;
+	}
+	return err;
+}
+
+quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t len, size_t *idx) {
+	quartz_Int found = quartzC_findConstant(c, str, len);
+	if(found < 0) {
+		// shit we gotta make it ourselves
+		quartz_Errno err;
+		*idx = quartzC_countConstants(c);
+		size_t trueSize = quartzI_trueStringLen(str, len);
+		quartz_String *s = quartzI_newString(c->Q, trueSize, NULL);
+		if(s == NULL) return quartz_oom(c->Q);
+		quartzI_trueStringWrite(s->buf, str, len);
+		err = quartzC_addConstant(c, str, len, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &s->obj});
+		if(err) return err;
+		return QUARTZ_OK;
+	}
+	*idx = found;
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
+	quartz_Thread *Q = c->Q;
+	quartz_Errno err;
+
+	if(node->type == QUARTZ_NODE_VARIABLE) {
+		// this one's a little complicated
+
+		// TODO: check if local
+		// TODO: check if upvalue 
+
+		// must be a global
+		size_t globalConst;
+		err = quartzC_internString(c, node->str, node->strlen, &globalConst);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_GETEXTERN,
+			.uD = globalConst,
+		});
+	}
+
+	if(node->type == QUARTZ_NODE_STR) {
+		size_t constID;
+		err = quartzC_internString(c, node->str, node->strlen, &constID);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_PUSHCONST,
+			.uD = constID,
+		});
+	}
+
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad expression node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
+}
+
+quartz_Errno quartzC_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);
+
+quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
+	quartz_Thread *Q = c->Q;
+	quartz_Errno err;
+	if(node->type == QUARTZ_NODE_CALL) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+		size_t argc = node->childCount - 1;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_CALL,
+			.B = argc,
+			.C = QUARTZ_CALL_STATIC,
+		});
+		return QUARTZ_OK;
+	}
+
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad statement node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
+}
+
+quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree) {
+	quartz_Errno err;
+	
+	// TODO: prepend varargprep instruction
+	
+	for(size_t i = 0; i < tree->childCount; i++) {
+		err = quartzC_runStatement(c, tree->children[i]);
+		if(err) return err;
+	}
+
+	err = quartzC_writeInstruction(c, (quartz_Instruction) {
+		.op = QUARTZ_OP_RETMOD,
+		.line = tree->line,
+	});
+	if(err) return err;
 	return QUARTZ_OK;
 }

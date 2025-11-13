@@ -33,6 +33,43 @@ bool quartzI_strleqlc(const char *a, size_t alen, const char *b) {
 	return true;
 }
 
+size_t quartzI_trueStringLen(const char *literal, size_t len) {
+	size_t counted = 0;
+	// TODO: eventually we'll have raw string literals, which don't support this
+	// algorithms
+	size_t i = 0;
+	if(literal[0] == '\'' || literal[0] == '"') {
+		i = 1;
+		len--;
+	}
+	while(i < len) {
+		if(literal[i] == '\\') {
+
+		} else {
+			counted++;
+			i++;
+		}
+	}
+	return counted;
+}
+
+void quartzI_trueStringWrite(char *buf, const char *literal, size_t len) {
+	size_t i = 0;
+	if(literal[0] == '\'' || literal[0] == '"') {
+		i = 1;
+		buf--; // trust me vro
+		len--;
+	}
+	while(i < len) {
+		if(literal[i] == '\\') {
+
+		} else {
+			buf[i] = literal[i];
+			i++;
+		}
+	}
+}
+
 char *quartz_strdup(quartz_Thread *Q, const char *s) {
 	size_t len = quartzI_strlen(s);
 	char *buf = quartz_alloc(Q, len+1);

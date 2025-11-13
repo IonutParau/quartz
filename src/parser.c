@@ -112,6 +112,9 @@ static bool quartzP_mustSkipToken(quartz_Token *t) {
 
 static quartz_Errno quartzP_consume(quartz_Parser *p) {
 	do {
+		if(p->curToken.tt != QUARTZ_TOK_EOF) {
+			p->curline += quartzI_countLines(p->curToken.s, p->curToken.len);
+		}
 		p->off += p->curToken.len;
 		quartz_TokenError e = quartzI_lexAt(p->s, p->off, &p->curToken);
 		if(e) {
@@ -119,8 +122,6 @@ static quartz_Errno quartzP_consume(quartz_Parser *p) {
 			p->lexErr = e;
 			p->errloc = p->curline;
 			return QUARTZ_ESYNTAX;
-		} else {
-			p->curline += quartzI_countLines(p->curToken.s, p->curToken.len);
 		}
 	} while(quartzP_mustSkipToken(&p->curToken));
 	return QUARTZ_OK;
