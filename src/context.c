@@ -3,6 +3,8 @@
 #ifndef QUARTZ_NO_LIBC
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 #endif
 
 size_t quartz_sizeOfContext() {
@@ -35,9 +37,55 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		*fileData = files[s];
 		return QUARTZ_OK;
 	}
+	if(action == QUARTZ_FS_OPEN) {
+		quartz_FileMode fmode = *buflen;
+		char mode[3] = "r";
+		mode[1] = '\0';
+		mode[2] = '\0';
+
+		if(fmode & QUARTZ_FILE_READABLE) mode[0] = 'r';
+		if(fmode & QUARTZ_FILE_WRITABLE) mode[0] = 'w';
+		if(fmode & QUARTZ_FILE_APPEND) mode[0] = 'a';
+		if(fmode & QUARTZ_FILE_BINARY) mode[1] = 'b';
+
+		FILE *f = fopen(buf, mode);
+		*buflen = fwrite(buf, 1, *buflen, f);
+		// we could check by length but doing so is weird
+		return QUARTZ_OK;
+	}
+	if(action == QUARTZ_FS_CLOSE) {
+		FILE *f = *(FILE **)fileData;
+		if(fclose(f) != 0) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		}
+		return QUARTZ_OK;
+	}
+	if(action == QUARTZ_FS_READ) {
+		FILE *f = *(FILE **)fileData;
+		if(feof(f)) {
+			*buflen = 0;
+			return QUARTZ_OK;
+		}
+		*buflen = fread(buf, 1, *buflen, f);
+		return QUARTZ_OK;
+	}
 	if(action == QUARTZ_FS_WRITE) {
 		FILE *f = *(FILE **)fileData;
 		*buflen = fwrite(buf, 1, *buflen, f);
+		// we could check by length but doing so is weird
+		return QUARTZ_OK;
+	}
+	if(action == QUARTZ_FS_SEEK) {
+		FILE *f = *(FILE **)fileData;
+		quartz_FsSeekArg arg = *(quartz_FsSeekArg *)buf;
+		int whence = SEEK_SET;
+		if(arg.whence == QUARTZ_SEEK_SET) whence = SEEK_SET;
+		if(arg.whence == QUARTZ_SEEK_CUR) whence = SEEK_CUR;
+		if(arg.whence == QUARTZ_SEEK_END) whence = SEEK_END;
+		if(fseek(f, whence, arg.off)) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		}
+		*buflen = ftell(f);
 		// we could check by length but doing so is weird
 		return QUARTZ_OK;
 	}

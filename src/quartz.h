@@ -69,8 +69,8 @@ typedef double (*quartz_Clockf)(void *userdata);
 typedef size_t (*quartz_Timef)(void *userdata);
 
 typedef enum quartz_FsAction {
-	// open a file. buf should be cast to a string, and *buflen would be the length. *buflen should not be changed.
-	// buf is a quartz_FileMode *, and the file mode should be respected.
+	// open a file. buf should be cast to a string, it must be NULL terminated.
+	// *buflen is a quartz_FileMode, and the file mode should be respected.
 	// *fileData should be set to a pointer to the new file, whatever type it may be.
 	// If QUARTZ_FILE_BINARY is not specified, the file should be open in an applicable text mode.
 	QUARTZ_FS_OPEN,
