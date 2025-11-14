@@ -81,6 +81,7 @@ typedef enum quartz_FsAction {
 	// close a file. *fileData may be changed but doing so is pointless.
 	QUARTZ_FS_CLOSE,
 	// read a file. *fileData should not be changed. *buflen should be changed to signify how much data was read. The data should be put in buf.
+	// 0 bytes read means EOF, though this may be changed
 	QUARTZ_FS_READ,
 	// write to a file. *fileData should not be changed. *buflen should be changed to signify how much data was written. The data is in buf.
 	QUARTZ_FS_WRITE,
@@ -135,7 +136,7 @@ void quartz_initContext(quartz_Context *ctx, void *userdata);
 void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc);
 void quartz_setClock(quartz_Context *ctx, quartz_Clockf clock);
 void quartz_setTime(quartz_Context *ctx, quartz_Timef time);
-void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file);
+void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file, size_t defaultBufSize);
 
 // For those who are confused, because we do not necessarily have a libc running
 // we implement our own file abstraction layer and buffering.
@@ -144,7 +145,7 @@ quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, size_t pathlen, qu
 quartz_Errno quartz_fclose(quartz_Thread *Q, quartz_File *f);
 quartz_Errno quartz_fwrite(quartz_Thread *Q, quartz_File *f, const void *buf, size_t *buflen);
 quartz_Errno quartz_fread(quartz_Thread *Q, quartz_File *f, void *buf, size_t *buflen);
-quartz_Errno quartz_fseek(quartz_Thread *Q, quartz_File *f, quartz_FsSeekWhence whence, quartz_Int off);
+quartz_Errno quartz_fseek(quartz_Thread *Q, quartz_File *f, quartz_FsSeekWhence whence, quartz_Int off, size_t *cursor);
 quartz_Errno quartz_fflush(quartz_Thread *Q, quartz_File *f);
 // if size is 0, the buffer size is unchanged
 quartz_Errno quartz_fsetvbuf(quartz_Thread *Q, quartz_File *f, quartz_FsBufMode bufMode, size_t size);

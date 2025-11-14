@@ -18,8 +18,11 @@ It only depends on 5 headers:
 - `math.h` for trig functions.
 - `stdarg.h` for varargs.
 
-When compiled with `-DQUARTZ_USE_LIBC`, it will use `stdlib.h`, `stdio.h` and
+When compiled without `-DQUARTZ_NO_LIBC`, it will use `stdlib.h`, `stdio.h` and
 POSIX/Windows APIs as a default implementation.
+
+Passing in `-DQUARTZ_NO_LIBC` should make it work on most baremetal machines, though the libm and double
+precision floats may cause incompatibilities. In the future, an option to compile out real and complex numbers may also be added.
 
 # Compiling
 

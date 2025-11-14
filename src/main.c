@@ -6,17 +6,31 @@
 #include "parser.h"
 #include "compiler.h"
 
-#define QUARTZ_USE_LIBC
 #include "one.c"
 
 static quartz_Errno testPrint(quartz_Thread *Q, size_t argc) {
 	quartz_Errno err = QUARTZ_OK;
-	for(size_t i = 0; i < argc; i++) {
-		const char *s = quartz_tostring(Q, i, &err);
-		if(err) return err;
-		printf("%s", s);
+	quartz_File *_stdout = quartz_fstdfile(Q, QUARTZ_STDOUT);
+	if(_stdout == NULL) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "stdout does not exist");
 	}
-	printf("\n");
+	size_t written = 0;
+	for(size_t i = 0; i < argc; i++) {
+		size_t len;
+		const char *s = quartz_tolstring(Q, i, &len, &err);
+		if(err) return err;
+		err = quartz_fwrite(Q, _stdout, s, &len);
+		if(err) return err;
+		written += len;
+	}
+	size_t len = 1;
+	err = quartz_fwrite(Q, _stdout, "\n", &len);
+	if(!err) {
+		written += len;
+		err = quartz_pushint(Q, written);
+		if(err) return err;
+		err = quartz_return(Q, -1);
+	}
 	return err;
 }
 
@@ -55,6 +69,8 @@ static quartz_Errno testCompiler(quartz_Thread *Q, quartz_Node *ast) {
 	quartz_Compiler c;
 	c.Q = NULL;
 	quartz_Errno err = QUARTZ_OK;
+	err = quartz_fopenstdio(Q);
+	if(err) goto cleanup;
 	err = quartzC_initCompiler(Q, &c);
 	if(err) goto cleanup;
 	err = quartzC_compileProgram(&c, ast);
