@@ -477,6 +477,16 @@ static quartz_Errno quartzI_pushRawMap(quartz_Thread *Q, quartz_Map *map) {
 	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &map->obj});
 }
 
+quartz_Errno quartz_pushmap(quartz_Thread *Q) {
+	return quartz_pushmapx(Q, 0);
+}
+
+quartz_Errno quartz_pushmapx(quartz_Thread *Q, size_t cap) {
+	quartz_Map *m = quartzI_newMap(Q, cap);
+	if(m == NULL) return quartz_oom(Q);
+	return quartzI_pushRawMap(Q, m);
+}
+
 quartz_Errno quartz_pushregistry(quartz_Thread *Q) {
 	return quartzI_pushRawMap(Q, Q->gState->registry);
 }

@@ -140,6 +140,15 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 		} else if(pc->op == QUARTZ_OP_CALL) {
 			err = quartz_call(Q, pc->B, pc->C);
 			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_GETFIELD) {
+			err = quartz_getindex(Q);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_GETCONSTFIELD) {
+			quartz_Value v = f->consts[pc->uD];
+			err = quartzI_pushRawValue(Q, v);
+			if(err) goto done;
+			err = quartz_getindex(Q);
+			if(err) goto done;
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;

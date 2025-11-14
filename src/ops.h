@@ -10,6 +10,8 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_GETEXTERN, // load entry named consts[uD] from the module or globals table
 	QUARTZ_OP_LOAD, // push value at index uD
 	QUARTZ_OP_CALL, // invoke f with B args, call flags are in C.
+	QUARTZ_OP_GETFIELD, // pop field, pop value, push value[field]
+	QUARTZ_OP_GETCONSTFIELD, // like getfield except the field is the constant in uD.
 } quartz_OpCode;
 
 #endif

@@ -179,6 +179,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_GETEXTERN,
 			.uD = globalConst,
+			.line = node->line,
 		});
 	}
 
@@ -189,6 +190,20 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_PUSHCONST,
 			.uD = constID,
+			.line = node->line,
+		});
+	}
+
+	if(node->type == QUARTZ_NODE_FIELD) {
+		err = quartzC_pushValue(c, node->children[0]);
+		if(err) return err;
+		size_t constID;
+		err = quartzC_internString(c, node->str, node->strlen, &constID);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_GETCONSTFIELD,
+			.uD = constID,
+			.line = node->line,
 		});
 	}
 
@@ -208,6 +223,7 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 			.op = QUARTZ_OP_CALL,
 			.B = argc,
 			.C = QUARTZ_CALL_STATIC,
+			.line = node->line,
 		});
 		return QUARTZ_OK;
 	}
