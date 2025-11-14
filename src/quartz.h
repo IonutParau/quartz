@@ -74,7 +74,7 @@ typedef enum quartz_FsAction {
 	// *fileData should be set to a pointer to the new file, whatever type it may be.
 	// If QUARTZ_FILE_BINARY is not specified, the file should be open in an applicable text mode.
 	QUARTZ_FS_OPEN,
-	// should only change *fileData, and set it to a pointer to be used as the stdin.
+	// should only change *fileData, and set it to a pointer to be used as the stdin/stdout/stderr.
 	// buf points to a quartz_StdFile.
 	// The file opened CAN STILL BE CLOSED, but should not be.
 	QUARTZ_FS_STDFILE,
@@ -140,18 +140,20 @@ void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file);
 // For those who are confused, because we do not necessarily have a libc running
 // we implement our own file abstraction layer and buffering.
 
-quartz_File *quartz_fopen(quartz_Thread *Q, quartz_FileMode mode, quartz_Errno *err);
-void quartz_fclose(quartz_Thread *Q, quartz_File *f);
+quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, size_t pathlen, quartz_FileMode mode, quartz_Errno *err);
+quartz_Errno quartz_fclose(quartz_Thread *Q, quartz_File *f);
 quartz_Errno quartz_fwrite(quartz_Thread *Q, quartz_File *f, const void *buf, size_t *buflen);
 quartz_Errno quartz_fread(quartz_Thread *Q, quartz_File *f, void *buf, size_t *buflen);
 quartz_Errno quartz_fseek(quartz_Thread *Q, quartz_File *f, quartz_FsSeekWhence whence, quartz_Int off);
+quartz_Errno quartz_fflush(quartz_Thread *Q, quartz_File *f);
 // if size is 0, the buffer size is unchanged
 quartz_Errno quartz_fsetvbuf(quartz_Thread *Q, quartz_File *f, quartz_FsBufMode bufMode, size_t size);
-// if f is not NULL, the stdFile will be changed to f.
-quartz_File *quartz_fstdfile(quartz_Thread *Q, quartz_StdFile stdFile, quartz_File *f);
+quartz_File *quartz_fstdfile(quartz_Thread *Q, quartz_StdFile stdFile);
+// f can be NULL, in which can fstdfile returns NULL as well
+void quartz_fsetstdfile(quartz_Thread *Q, quartz_StdFile stdFile, quartz_File *f);
 // open the stdio files and set them. This is not done automatically, as
 // not all environments may have stdio.
-void quartz_fopenstdio(quartz_Thread *Q);
+quartz_Errno quartz_fopenstdio(quartz_Thread *Q);
 
 typedef quartz_Errno (quartz_CFunction)(quartz_Thread *Q, size_t argc);
 typedef quartz_Errno (quartz_KFunction)(quartz_Thread *Q, quartz_Errno state, void *context);

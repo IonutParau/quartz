@@ -1,4 +1,5 @@
 #include "context.c"
+#include "fs.c"
 #include "gc.c"
 #include "state.c"
 #include "utils.c"
