@@ -1,7 +1,5 @@
 #include "context.h"
 
-#define QUARTZ_USE_LIBC
-
 #ifdef QUARTZ_USE_LIBC
 #include <stdlib.h>
 #include <stdio.h>
