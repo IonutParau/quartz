@@ -299,6 +299,13 @@ quartz_Errno quartz_pushlstring(quartz_Thread *Q, const char *s, size_t len);
 quartz_Errno quartz_pushfstring(quartz_Thread *Q, const char *fmt, ...);
 quartz_Errno quartz_pushfstringv(quartz_Thread *Q, const char *fmt, va_list arg);
 quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f);
+// uses the default globals
+quartz_Errno quartz_pushscript(quartz_Thread *Q, const char *code, const char *src);
+// uses the default globals
+quartz_Errno quartz_pushlscript(quartz_Thread *Q, const char *code, size_t codelen, const char *src, size_t srclen);
+// Pushes a Quartz function which executes the script.
+// code, source, and globals are stack indexes to values. They should be a string, string and map.
+quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals);
 quartz_Errno quartz_pushmap(quartz_Thread *Q);
 quartz_Errno quartz_pushmapx(quartz_Thread *Q, size_t cap);
 quartz_Errno quartz_pushlist(quartz_Thread *Q, size_t len);
@@ -385,6 +392,9 @@ quartz_Errno quartz_storeUpval(quartz_Thread *Q, size_t upval, int x);
 quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val);
 // set *ptr to val
 quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val);
+bool quartz_contains(quartz_Thread *Q, int x, quartz_Errno *err);
+quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b);
+quartz_Errno quartz_jump(quartz_Thread *Q, int a, int b);
 
 // getting data out
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);
@@ -397,7 +407,5 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
 // get the capacity (for array and map)
 size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err);
 size_t quartz_memsizeof(quartz_Thread *Q, int x);
-bool quartz_contains(quartz_Thread *Q, int x, quartz_Errno *err);
-quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b);
 
 #endif

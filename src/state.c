@@ -4,6 +4,8 @@
 #include "context.h"
 #include "gc.h"
 #include "state.h"
+#include "parser.h"
+#include "compiler.h"
 
 quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	size_t defaultStackSize = 64;
@@ -68,6 +70,12 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 void quartz_destroyThread(quartz_Thread *Q) {
 	if(Q == NULL) return;
 	if(Q == Q->gState->mainThread) {
+		for(size_t i = 0; i < QUARTZ_STDFILE_COUNT; i++) {
+			if(Q->gState->stdfiles[i] != NULL) {
+				quartz_fclose(Q, Q->gState->stdfiles[i]);
+				Q->gState->stdfiles[i] = NULL;
+			}
+		}
 		// main thread is destroyed
 		quartz_GlobalState *s = Q->gState;
 		// bye bye heap
@@ -471,6 +479,86 @@ quartz_Errno quartz_pushfstringv(quartz_Thread *Q, const char *fmt, va_list arg)
 
 quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f) {
 	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VCFUNC, .func = f});
+}
+
+quartz_Errno quartz_pushscript(quartz_Thread *Q, const char *code, const char *src) {
+	return quartz_pushlscript(Q, code, quartzI_strlen(code), src, quartzI_strlen(src));
+}
+
+static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code, quartz_String *src, quartz_Map *globals) {
+	quartz_Errno err;
+	quartz_Compiler c;
+	quartz_Parser p;
+	quartzP_initParser(Q, &p, code->buf);
+	quartz_Node *n = quartzI_allocAST(Q, QUARTZ_NODE_PROGRAM, 1, "", 0);
+	if(n == NULL) return quartz_oom(Q);
+	err = quartzP_parse(Q, &p, n);
+	if(err) {
+		quartzI_freeAST(Q, n);
+		quartz_Uint line = p.errloc;
+		if(p.pErr == QUARTZ_PARSE_EINT) {
+			return quartz_erroras(Q, p.intErrno);
+		} else if(p.pErr == QUARTZ_PARSE_EBADTOK) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:expected %s", src->buf, p.errloc, p.tokExpected);
+		} else if(p.pErr == QUARTZ_PARSE_ESTMT) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:statement expected", src->buf, p.errloc);
+		} else if(p.pErr == QUARTZ_PARSE_EEXPR) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:expression expected", src->buf, p.errloc);
+		} else if(p.pErr == QUARTZ_PARSE_ELEX) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:%s", src->buf, p.errloc, quartzI_lexErrors[p.lexErr]);
+		} else if(p.pErr == QUARTZ_PARSE_ENOLOOP) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:statement not in loop", src->buf, p.errloc);
+		} else {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown parser error");
+		}
+	}
+	err = quartzC_initCompiler(Q, &c);
+	if(err) {
+		quartzI_freeAST(Q, n);
+		return err;
+	}
+	err = quartzC_compileProgram(&c, n);
+	if(err) {
+		quartzI_freeAST(Q, n);
+		quartzC_freeFailingCompiler(c);
+		return err;
+	}
+	quartzI_freeAST(Q, n);
+	quartz_Function *f = quartzC_toFunctionAndFree(&c, src, globals);
+	if(f == NULL) {
+		quartzC_freeFailingCompiler(c);
+		return quartz_oom(Q);
+	}
+	err = quartzI_pushRawValue(Q, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &f->obj,
+	});
+	if(err) return err;
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_pushlscript(quartz_Thread *Q, const char *code, size_t codelen, const char *src, size_t srclen) {
+	quartz_String *codeObj = quartzI_newString(Q, codelen, code);
+	if(codeObj == NULL) return quartz_oom(Q);
+	quartz_String *srcObj = quartzI_newString(Q, srclen, src);
+	if(srcObj == NULL) return quartz_oom(Q);
+	return quartzI_pushscriptraw(Q, codeObj, srcObj, Q->gState->globals);
+}
+
+quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals) {
+	quartz_Errno err;
+
+	err = quartz_typeassert(Q, code, QUARTZ_TSTR);	
+	if(err) return err;
+	err = quartz_typeassert(Q, source, QUARTZ_TSTR);	
+	if(err) return err;
+	err = quartz_typeassert(Q, globals, QUARTZ_TMAP);	
+	if(err) return err;
+
+	quartz_String *codeObj = (quartz_String *)quartzI_getStackValue(Q, code).obj;
+	quartz_String *srcObj = (quartz_String *)quartzI_getStackValue(Q, source).obj;
+	quartz_Map *globalsObj = (quartz_Map *)quartzI_getStackValue(Q, globals).obj;
+	return quartzI_pushscriptraw(Q, codeObj, srcObj, globalsObj);
 }
 
 static quartz_Errno quartzI_pushRawMap(quartz_Thread *Q, quartz_Map *map) {
