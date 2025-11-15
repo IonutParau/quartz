@@ -15,3 +15,4 @@
 #include "libs.c"
 #include "libcore.c"
 #include "libio.c"
+#include "libgc.c"

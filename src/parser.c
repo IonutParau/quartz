@@ -255,8 +255,18 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 				while(1) {
 					l = p->curline;
 					err = quartzP_peekToken(p, &t);
-					if(err) return err;
-					if(t.s[0] == ')') break;
+					if(err) {
+						quartzI_freeAST(p->Q, call);
+						return err;
+					}
+					if(t.s[0] == ')') {
+						err = quartzP_nextToken(p, &t);
+						if(err) {
+							quartzI_freeAST(p->Q, call);
+							return err;
+						}
+						break;
+					}
 
 					err = quartzP_parseExpression(p, call);
 					if(err) {

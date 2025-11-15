@@ -16,6 +16,43 @@ static quartz_Errno testCompiler(quartz_Thread *Q, const char *s) {
 	return quartz_call(Q, 0, QUARTZ_CALL_STATIC);
 }
 
+static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
+	quartz_Errno err;
+
+	err = quartz_openstdlib(Q);
+	if(err) return err;
+
+	if(argc == 1) {
+		// repl
+		printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
+		char *line = NULL;
+		size_t linebuflen = 0;
+		const char *src = "stdin";
+		size_t srclen = strlen(src);
+		while(true) {
+			fputs("> ", stdout);
+			fflush(stdout);
+			ssize_t linelen = getline(&line, &linebuflen, stdin);
+			if(linelen < 0) {
+				free(line);
+				fputs("\n", stdout);
+				return QUARTZ_OK; // trust
+			}
+			err = quartz_pushlscript(Q, line, linelen, src, srclen);
+			if(err) return err;
+			// not protected, L
+			err = quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+			if(err) return err;
+		}
+	}
+
+	if(argc == 2) {
+		// TODO: run script
+	}
+
+	return QUARTZ_OK;
+}
+
 int main(int argc, char **argv) {
 	size_t cSize = quartz_sizeOfContext();
 	char cMem[cSize];
@@ -25,28 +62,13 @@ int main(int argc, char **argv) {
 
 	quartz_Errno err;
 
-	quartz_Buffer buf;
-	quartz_bufinit(Q, &buf, 64);
-	quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
-	quartz_bufputs(&buf, "io.writeln(21)\n");
-	// commented out because we will handle compiling these later
-	//quartz_bufputs(&buf, "# comment\n");
-	//quartz_bufputs(&buf, "local x = 53\n");
-	//quartz_bufputs(&buf, "local y = (21 + 2i)\n");
-	//quartz_bufputs(&buf, "local z = \"hi\"\n");
-	//quartz_bufputs(&buf, "io[\"writeln\"](x + y, z)\n");
-
-	char *s = quartz_bufstr(&buf, NULL);
-
-	err = testCompiler(Q, s);
+	err = interpreter(Q, argc, argv);
 	if(err) {
 		quartz_pusherror(Q);
 		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
 		return 1;
 	}
 
-	quartz_bufdestroy(&buf);
-	quartz_strfree(Q, s);
 	printf("Peak Memory Usage: %zu\n", quartz_gcPeak(Q));
 	quartz_destroyThread(Q);
 	return 0;

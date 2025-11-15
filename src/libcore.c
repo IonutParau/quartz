@@ -9,6 +9,12 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	const char *_PATHCONF = quartz_getModulePathConf(c);
 	
 	// TODO: like, everything
+	
+	err = quartz_pushstring(Q, quartz_version());
+	if(err) return err;
+	err = quartz_setglobal(Q, "_VERSION", -1);
+	if(err) return err;
+	quartz_pop(Q);
 
 	err = quartz_pushstring(Q, _PATH);
 	if(err) return err;

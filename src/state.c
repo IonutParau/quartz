@@ -7,6 +7,10 @@
 #include "parser.h"
 #include "compiler.h"
 
+const char *quartz_version() {
+	return QUARTZ_VERSION;
+}
+
 quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	size_t defaultStackSize = 64;
 	size_t defaultCallSize = 8;

@@ -216,6 +216,19 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 			.sD = i,
 		});
 	}
+	
+	if(node->type == QUARTZ_NODE_CALL) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+		size_t argc = node->childCount - 1;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_CALL,
+			.B = argc,
+			.C = 0,
+			.line = node->line,
+		});
+		return QUARTZ_OK;
+	}
 
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad expression node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }

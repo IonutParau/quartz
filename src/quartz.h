@@ -189,10 +189,18 @@ typedef quartz_Errno (quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz
 quartz_Thread *quartz_newThread(quartz_Context *ctx);
 void quartz_destroyThread(quartz_Thread *Q);
 
+#define QUARTZ_VERSION "Quartz -1.0"
+#define QUARTZ_VER_MAJOR -1
+#define QUARTZ_VER_MINOR 0
+#define QUARTZ_VER_PATCH 0
+
+const char *quartz_version();
+
 // TODO: loading more of stdlib
 quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
+quartz_Errno quartz_openlibgc(quartz_Thread *Q);
 
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
