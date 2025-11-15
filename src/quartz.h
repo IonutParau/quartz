@@ -434,6 +434,9 @@ quartz_Errno quartz_getglobal(quartz_Thread *Q, const char *global);
 quartz_Errno quartz_setloaded(quartz_Thread *Q, const char *mod, int x);
 quartz_Errno quartz_getloaded(quartz_Thread *Q, const char *mod);
 
+quartz_Errno quartz_setregistry(quartz_Thread *Q, const char *var, int x);
+quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var);
+
 // getting data out
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);
 const char *quartz_tolstring(quartz_Thread *Q, int x, size_t *len, quartz_Errno *err);

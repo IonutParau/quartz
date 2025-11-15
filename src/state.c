@@ -702,13 +702,33 @@ quartz_Errno quartz_setloaded(quartz_Thread *Q, const char *global, int x) {
 	quartz_String *s = quartzI_newCString(Q, global);
 	if(s == NULL) return quartz_oom(Q);
 	key.obj = &s->obj;
-	return quartzI_mapSet(Q, Q->gState->globals, key, v);
+	return quartzI_mapSet(Q, Q->gState->loaded, key, v);
 }
 
 quartz_Errno quartz_getloaded(quartz_Thread *Q, const char *global) {
 	quartz_Value key;
 	key.type = QUARTZ_VOBJ;
 	quartz_String *s = quartzI_newCString(Q, global);
+	if(s == NULL) return quartz_oom(Q);
+	quartz_Value v = quartzI_mapGet(Q->gState->loaded, key);
+	return quartzI_pushRawValue(Q, v);
+}
+
+quartz_Errno quartz_setregistry(quartz_Thread *Q, const char *var, int x) {
+	// TODO: use more optimized mapSet for strings
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	quartz_Value key;
+	key.type = QUARTZ_VOBJ;
+	quartz_String *s = quartzI_newCString(Q, var);
+	if(s == NULL) return quartz_oom(Q);
+	key.obj = &s->obj;
+	return quartzI_mapSet(Q, Q->gState->registry, key, v);
+}
+
+quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var) {
+	quartz_Value key;
+	key.type = QUARTZ_VOBJ;
+	quartz_String *s = quartzI_newCString(Q, var);
 	if(s == NULL) return quartz_oom(Q);
 	quartz_Value v = quartzI_mapGet(Q->gState->globals, key);
 	return quartzI_pushRawValue(Q, v);
