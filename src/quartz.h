@@ -214,6 +214,11 @@ size_t quartz_gcPeak(quartz_Thread *Q);
 // set it to 0 to leave it unchanged
 double quartz_gcRatio(quartz_Thread *Q, double ratio);
 
+// Objects created are put in the "temporary ring", which means they can not be freed.
+// This is so if C code has any pointers to them, they won't become dangling.
+// However, this can be bad for code that runs in loops.
+// You can call this, though executing Quartz functions calls it as well.
+void quartz_cleartmp(quartz_Thread *Q);
 void quartz_gc(quartz_Thread *Q);
 
 // These functions do use the context, but they may trigger GC to best use memory.

@@ -66,8 +66,6 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 
 	gState->gcBlocked = false; // memory can be reclaimed now
 
-	// basic setup (no stdio)
-	quartzI_emptyTemporaries(Q);
 	return Q;
 }
 

@@ -142,6 +142,10 @@ static void quartz_grayValue(quartz_Thread *Q, quartz_Value value) {
 	quartz_grayObject(Q, obj);
 }
 
+void quartz_cleartmp(quartz_Thread *Q) {
+	Q->gState->tmpArrSize = 0;
+}
+
 void quartz_gc(quartz_Thread *Q) {
 	if(Q->gState->gcBlocked) return; // not allowed
 	
@@ -312,10 +316,6 @@ void quartzI_trygc(quartz_Thread *Q) {
 	if(Q->gState->gcCount > Q->gState->gcTarget) {
 		quartz_gc(Q);
 	}
-}
-
-void quartzI_emptyTemporaries(quartz_Thread *Q) {
-	Q->gState->tmpArrSize = 0;
 }
 
 void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj) {

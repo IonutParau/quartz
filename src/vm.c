@@ -107,7 +107,7 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 		if(err) return err;
 	}
 	while(true) {
-		quartzI_emptyTemporaries(Q);
+		quartz_cleartmp(Q);
 		// for anyone reading, this means if memory usage
 		// is above the intended threshhold, do a GC.
 		// Not that we do a GC on EVERY INSTRUCTION, that'd be devastating.
@@ -182,7 +182,7 @@ static quartz_Errno quartzI_callCFunc(quartz_Thread *Q, quartz_CFunction *f) {
 	}
 	quartzI_popCallEntry(Q);
 	// API can make a bunch of garbage, so we should clean stuff
-	quartzI_emptyTemporaries(Q);
+	quartz_cleartmp(Q);
 	return err;
 }
 
