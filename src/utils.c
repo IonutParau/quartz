@@ -124,8 +124,51 @@ bool quartzI_isprint(char c) {
 	return c >= ' ' && c <= '~';
 }
 
-quartz_Uint quartzI_atou(const char *s, size_t base);
-quartz_Int quartzI_atoi(const char *s, size_t base);
+bool quartzI_isupper(char c) {
+	return c >= 'A' && c <= 'Z';
+}
+
+bool quartzI_islower(char c) {
+	return c >= 'a' && c <= 'z';
+}
+
+int quartzI_getdigit(char c) {
+	if(quartzI_ishex(c)) {
+		if(quartzI_isupper(c)) c ^= 0x20; // this works
+		const char *a = "abcdef";
+		for(size_t i = 0; a[i] != '\0'; i++) {
+			if(a[i] == c) return 10 + i;
+		}
+	}
+	return c - '0';
+}
+
+quartz_Int quartzI_atoi(const char *s, size_t len) {
+	quartz_Int n = 0;
+	size_t i = 0;
+	int base = 10;
+	if(len >= 2 && s[0] == '0') {
+		if(s[1] == 'x') {
+			i = 2;
+			base = 16;
+		}
+		if(s[1] == 'o') {
+			i = 2;
+			base = 8;
+		}
+		if(s[1] == 'b') {
+			i = 2;
+			base = 2;
+		}
+	}
+
+	while(i < len) {
+		n *= base;
+		n += quartzI_getdigit(s[i]);
+		i++;
+	}
+	return n;
+}
 
 // s should be after the %
 void quartzI_parseFormatter(const char *s, quartz_FormatData *d) {

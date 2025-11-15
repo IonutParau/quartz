@@ -100,6 +100,17 @@ quartz_Errno quartz_bufputux(quartz_Buffer *buf, quartz_Uint n, size_t base, siz
 		digitlen++;
 	}
 
+	{
+		// flip the digits dammit!
+		size_t center = digitlen/2;
+		for(size_t i = 0; i < center; i++) {
+			size_t j = digitlen - i - 1;
+			char tmp = digits[i];
+			digits[i] = digits[j];
+			digits[j] = tmp;
+		}
+	}
+
 	if(digitlen == 0) {
 		digits[0] = '0';
 		digitlen = 1;

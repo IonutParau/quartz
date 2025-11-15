@@ -207,6 +207,16 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		});
 	}
 
+	if(node->type == QUARTZ_NODE_NUM) {
+		// this DOES NOT WORK FOR FLOATS but we DO NOT CARE RIGHT NOW
+		// TODO: make it actually check what type of number it is
+		quartz_Int i = quartzI_atoi(node->str, node->strlen);
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_PUSHINT,
+			.sD = i,
+		});
+	}
+
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad expression node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }
 

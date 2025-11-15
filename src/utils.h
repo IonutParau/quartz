@@ -34,8 +34,14 @@ bool quartzI_isident(char c);
 // checks whether a byte is ASCII printable
 bool quartzI_isprint(char c);
 
-quartz_Uint quartzI_atou(const char *s, size_t base);
-quartz_Int quartzI_atoi(const char *s, size_t base);
+bool quartzI_isupper(char c);
+bool quartzI_islower(char c);
+
+// infers base
+int quartzI_getdigit(char c);
+
+// assumes valid string
+quartz_Int quartzI_atoi(const char *s, size_t len);
 
 // s should be after the %
 void quartzI_parseFormatter(const char *s, quartz_FormatData *d);
