@@ -3,6 +3,13 @@
 
 #include "quartz.h"
 
+typedef enum quartz_PathConfIdx {
+	QUARTZ_PATHCONF_PATHSEP = 0,
+	QUARTZ_PATHCONF_SYMSEP,
+	QUARTZ_PATHCONF_COUNT,
+	QUARTZ_PATHCONF_SIZE,
+} quartz_PathConfIdx;
+
 typedef struct quartz_Context {
 	void *userdata;
 	quartz_Allocf alloc;
@@ -10,6 +17,9 @@ typedef struct quartz_Context {
 	quartz_Timef time;
 	quartz_Filef fs;
 	size_t fsDefaultBufSize;
+	const char *modPath;
+	const char *modCPath;
+	char modPathConf[QUARTZ_PATHCONF_SIZE];
 } quartz_Context;
 
 void *quartz_rawAlloc(quartz_Context *ctx, size_t size);

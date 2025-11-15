@@ -1,4 +1,6 @@
 #include "context.h"
+#include "value.h"
+#include "platform.h"
 
 #ifndef QUARTZ_NO_LIBC
 #include <stdlib.h>
@@ -72,6 +74,9 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 	if(action == QUARTZ_FS_WRITE) {
 		FILE *f = *(FILE **)fileData;
 		*buflen = fwrite(buf, 1, *buflen, f);
+		if(fflush(f)) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		}
 		// we could check by length but doing so is weird
 		return QUARTZ_OK;
 	}
@@ -93,6 +98,22 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 #endif
 }
 
+#ifdef QUARTZ_LINUX
+#define QUARTZ_PATHPREFIX "/lib/@.qrtz;/lib/@/lib.qrtz;/usr/lib/@.qrtz;/usr/lib/@.qrtz;"
+#define QUARTZ_CPATHPREFIX "/lib/@.so;/usr/lib/quartz/@.so;/usr/lib/local/quartz/@.so;"
+#else
+#define QUARTZ_PATHPREFIX ""
+#define QUARTZ_CPATHPREFIX ""
+#endif
+
+static const char *quartzI_defaultPath() {
+	return QUARTZ_PATHPREFIX "@.qrtz;@/lib.qrtz;lib/@.qrtz;lib/@/lib.qrtz";
+}
+
+static const char *quartzI_defaultCPath() {
+	return QUARTZ_CPATHPREFIX "@.so;lib/@.so;loadall.so";
+}
+
 void quartz_initContext(quartz_Context *ctx, void *userdata) {
 	ctx->userdata = userdata;
 	ctx->alloc = quartzI_defaultAlloc;
@@ -102,6 +123,7 @@ void quartz_initContext(quartz_Context *ctx, void *userdata) {
 #else
 	ctx->fsDefaultBufSize = BUFSIZ;
 #endif
+	quartz_setModuleConfig(ctx, NULL, NULL, NULL);
 }
 
 void *quartz_rawAlloc(quartz_Context *ctx, size_t size) {
@@ -139,4 +161,39 @@ void quartz_setTime(quartz_Context *ctx, quartz_Timef time) {
 void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file, size_t defaultFileBufSize) {
 	ctx->fs = file;
 	ctx->fsDefaultBufSize = defaultFileBufSize;
+}
+
+void quartz_setModuleConfig(quartz_Context *ctx, const char *path, const char *cpath, const char *pathConfig) {
+	ctx->modPathConf[QUARTZ_PATHCONF_PATHSEP] = QUARTZ_PATHSEPC;
+	ctx->modPathConf[QUARTZ_PATHCONF_SYMSEP] = '_';
+	ctx->modPathConf[QUARTZ_PATHCONF_COUNT] = '\0';
+
+	if(path == NULL) path = quartzI_defaultPath();
+	if(cpath == NULL) cpath = quartzI_defaultCPath();
+
+	ctx->modPath = path;
+	ctx->modCPath = cpath;
+
+	if(pathConfig) {
+		for(size_t i = 0; i < QUARTZ_PATHCONF_COUNT; i++) {
+			if(pathConfig[i]) break;
+			ctx->modPathConf[i] = pathConfig[i];
+		}
+	}
+}
+
+const char *quartz_getModulePath(const quartz_Context *ctx) {
+	return ctx->modPath;
+}
+
+const char *quartz_getModuleCPath(const quartz_Context *ctx) {
+	return ctx->modCPath;
+}
+
+const char *quartz_getModulePathConf(const quartz_Context *ctx) {
+	return ctx->modPathConf;
+}
+
+quartz_Context *quartz_getContextOf(quartz_Thread *Q) {
+	return &Q->gState->context;
 }

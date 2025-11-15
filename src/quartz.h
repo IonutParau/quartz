@@ -137,6 +137,20 @@ void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc);
 void quartz_setClock(quartz_Context *ctx, quartz_Clockf clock);
 void quartz_setTime(quartz_Context *ctx, quartz_Timef time);
 void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file, size_t defaultBufSize);
+// configures how module resolution happens for things like loadlib.
+// Path is the path list for scripts, cpath is the path list for native libraries
+// All 3 can be set to NULL for default options.
+// While the default search path may include various things, common paths are @.qrtz;@/lib.qrtz;lib/@.qrtz;lib/@/lib.qrtz
+// pathConfig should be a string with 2 (tho may have less) characters.
+// pathConfig[0] is treated as the file separator, meaning / is replaced with it after the path is computed.
+// pathConfig[1] is treated as the symbol module separator, which is used when attempting to load dynamic libaries. Aka, when computing the symbol,
+// it will load a symbol where the / in the module are replaced by this character. The default is _
+void quartz_setModuleConfig(quartz_Context *ctx, const char *path, const char *cpath, const char *pathConfig);
+const char *quartz_getModulePath(const quartz_Context *ctx);
+const char *quartz_getModuleCPath(const quartz_Context *ctx);
+const char *quartz_getModulePathConf(const quartz_Context *ctx);
+
+quartz_Context *quartz_getContextOf(quartz_Thread *Q);
 
 // For those who are confused, because we do not necessarily have a libc running
 // we implement our own file abstraction layer and buffering.
@@ -179,7 +193,6 @@ void quartz_destroyThread(quartz_Thread *Q);
 quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
-quartz_Errno quartz_openlibfs(quartz_Thread *Q);
 
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
@@ -278,6 +291,26 @@ quartz_Errno quartz_oom(quartz_Thread *Q);
 quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err);
 // error if condition is false
 quartz_Errno quartz_assertf(quartz_Thread *Q, bool condition, quartz_Errno exit, const char *fmt, ...);
+
+// loading libraries
+
+typedef struct quartz_LibFunction {
+	const char *name;
+	quartz_CFunction *f;
+} quartz_LibFunction;
+
+// libs is terminated by NULL name.
+// This function will push a map, and then set the corresponding fields to the appropriate C functions.
+// It will also set the corresponding fields in loaded, so it can be imported.
+quartz_Errno quartz_addlib(quartz_Thread *Q, const char *module, quartz_LibFunction *libs);
+// just like addlib, except it also adds the global.
+quartz_Errno quartz_addgloballib(quartz_Thread *Q, const char *global, quartz_LibFunction *libs);
+// searches for a path the way import would.
+// Pushes the result, with null being pushed if it couldn't be found.
+quartz_Errno quartz_searchPath(quartz_Thread *Q, const char *module);
+// will load a lib.
+// This will try to push the result, but may error.
+quartz_Errno quartz_import(quartz_Thread *Q, const char *module);
 
 // get the index of the stack top. (stacksize - 1)
 size_t quartz_gettop(quartz_Thread *Q);
@@ -394,7 +427,12 @@ quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val);
 quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val);
 bool quartz_contains(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b);
-quartz_Errno quartz_jump(quartz_Thread *Q, int a, int b);
+
+quartz_Errno quartz_setglobal(quartz_Thread *Q, const char *global, int x);
+quartz_Errno quartz_getglobal(quartz_Thread *Q, const char *global);
+
+quartz_Errno quartz_setloaded(quartz_Thread *Q, const char *mod, int x);
+quartz_Errno quartz_getloaded(quartz_Thread *Q, const char *mod);
 
 // getting data out
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);
