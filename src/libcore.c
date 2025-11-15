@@ -27,6 +27,24 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_setglobal(Q, "_PATHCONF", -1);
 	if(err) return err;
 	quartz_pop(Q);
+	
+	err = quartz_pushglobals(Q);
+	if(err) return err;
+	err = quartz_setglobal(Q, "_G", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushloaded(Q);
+	if(err) return err;
+	err = quartz_setglobal(Q, "_L", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushregistry(Q);
+	if(err) return err;
+	err = quartz_setglobal(Q, "_R", -1);
+	if(err) return err;
+	quartz_pop(Q);
 
 	return QUARTZ_OK;
 }

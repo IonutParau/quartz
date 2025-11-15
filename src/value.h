@@ -251,6 +251,7 @@ quartz_Closure *quartzI_getClosure(quartz_Value f);
 quartz_Function *quartzI_getFunction(quartz_Value f);
 quartz_CFunction *quartzI_getCFunction(quartz_Value f);
 quartz_Value quartzI_mapGet(quartz_Map *m, quartz_Value key);
+bool quartzI_truthyValue(quartz_Value v);
 bool quartzI_isLegalPair(quartz_MapPair pair);
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v);
 quartz_Errno quartzI_getIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value *val);

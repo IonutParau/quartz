@@ -437,12 +437,17 @@ quartz_Errno quartz_getloaded(quartz_Thread *Q, const char *mod);
 quartz_Errno quartz_setregistry(quartz_Thread *Q, const char *var, int x);
 quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var);
 
+// this will modify the value stored at x.
+quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result);
+
 // getting data out
+
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);
 const char *quartz_tolstring(quartz_Thread *Q, int x, size_t *len, quartz_Errno *err);
 quartz_Int quartz_tointeger(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Real quartz_toreal(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err);
+bool quartz_truthy(quartz_Thread *Q, int x);
 // get the length (for tuple, array, map and struct)
 size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
 // get the capacity (for array and map)

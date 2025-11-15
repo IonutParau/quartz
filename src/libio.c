@@ -8,6 +8,8 @@ static quartz_Errno testPrint(quartz_Thread *Q, size_t argc) {
 	}
 	size_t written = 0;
 	for(size_t i = 0; i < argc; i++) {
+		err = quartz_cast(Q, i, QUARTZ_TSTR);
+		if(err) return err;
 		size_t len;
 		const char *s = quartz_tolstring(Q, i, &len, &err);
 		if(err) return err;

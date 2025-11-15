@@ -220,6 +220,10 @@ quartz_Errno quartz_erroras(quartz_Thread *Q, quartz_Errno err) {
 		return quartz_errorf(Q, QUARTZ_EIO, "io error");
 	} else if(err == QUARTZ_ESYNTAX) {
 		return quartz_errorf(Q, QUARTZ_ESYNTAX, "syntax error");
+	} else if(err == QUARTZ_OK) {
+		// this is *problematic*
+		quartz_clearerror(Q);
+		return QUARTZ_OK;
 	}
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "runtime error");
 }
@@ -734,6 +738,99 @@ quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var) {
 	return quartzI_pushRawValue(Q, v);
 }
 
+static quartz_Errno quartzI_setstringf(quartz_Thread *Q, int x, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+
+	quartz_Errno err = QUARTZ_OK;
+
+	quartz_Buffer buf;
+	err = quartz_bufinit(Q, &buf, 16);
+	if(err) goto done;
+
+	err = quartz_bufputfv(&buf, fmt, args);
+	if(err) goto done;
+
+	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
+	if(s == NULL) {
+		err = quartz_oom(Q);
+		goto done;
+	}
+
+	quartzI_setStackValue(Q, x, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &s->obj,
+	});
+
+done:
+	quartz_bufdestroy(&buf);
+	va_end(args);
+	return err;
+}
+
+quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
+	quartz_Errno err;
+	err = quartz_assertf(Q, quartz_validstackslot(Q, x), QUARTZ_ERUNTIME, "invalid stack slot");
+	if(err) return err;
+	quartz_Type t = quartz_typeof(Q, x);
+	if(t == result) {
+		// super complex cast I know
+		return QUARTZ_OK;
+	}
+	if(result == QUARTZ_TBOOL) {
+		quartzI_setStackValue(Q, x, (quartz_Value) {
+			.type = QUARTZ_VBOOL,
+			.b = quartz_truthy(Q, x),
+		});
+		return QUARTZ_OK;
+	}
+	if(result == QUARTZ_TSTR) {
+		if(t == QUARTZ_TNULL) {
+			return quartzI_setstringf(Q, x, "null");
+		}
+		if(t == QUARTZ_TBOOL) {
+			return quartzI_setstringf(Q, x, quartz_truthy(Q, x) ? "true" : "false");
+		}
+		if(t == QUARTZ_TINT) {
+			quartz_Int i = quartz_tointeger(Q, x, &err);
+			if(err) return err;
+			return quartzI_setstringf(Q, x, "%d", i);
+		}
+		if(t == QUARTZ_TREAL) {
+			quartz_Real r = quartz_toreal(Q, x, &err);
+			if(err) return err;
+			return quartzI_setstringf(Q, x, "%f", r);
+		}
+		if(t == QUARTZ_TCOMPLEX) {
+			quartz_Complex c = quartz_tocomplex(Q, x, &err);
+			if(err) return err;
+			return quartzI_setstringf(Q, x, "%C", c);
+		}
+		// catch-all for the other types
+		quartz_Value v = quartzI_getStackValue(Q, x);
+		return quartzI_setstringf(Q, x, "<%s at %p>", quartz_typenames[t], v.obj);
+	}
+	if(result == QUARTZ_TINT) {
+		if(t == QUARTZ_TREAL) {
+			double n = quartz_toreal(Q, x, &err);
+			if(err) return err;
+			quartzI_setStackValue(Q, x, (quartz_Value) {
+				.type = QUARTZ_VINT,
+				.integer = n,
+			});
+		}
+		if(t == QUARTZ_TCOMPLEX) {
+			quartz_Complex c = quartz_tocomplex(Q, x, &err);
+			if(err) return err;
+			quartzI_setStackValue(Q, x, (quartz_Value) {
+				.type = QUARTZ_VINT,
+				.integer = c.real,
+			});
+		}
+	}
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad cast from %s to %s", quartz_typenames[t], quartz_typenames[result]);
+}
+
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err) {
 	return quartz_tolstring(Q, x, NULL, err);
 }
@@ -770,6 +867,10 @@ quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err) {
 	quartz_Value v = quartzI_getStackValue(Q, x);
 	*err = QUARTZ_OK;
 	return v.complex;
+}
+
+bool quartz_truthy(quartz_Thread *Q, int x) {
+	return quartzI_truthyValue(quartzI_getStackValue(Q, x));
 }
 
 // get the length (for tuple, array, map and struct)

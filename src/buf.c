@@ -7,10 +7,11 @@ quartz_Errno quartz_bufinit(quartz_Thread *Q, quartz_Buffer *buf, size_t cap) {
 	buf->len = 0;
 	buf->cap = cap;
 	buf->buf = quartz_alloc(Q, cap);
-	return buf->buf == NULL ? QUARTZ_ENOMEM : QUARTZ_OK;
+	return buf->buf == NULL ? quartz_oom(Q) : QUARTZ_OK;
 }
 
 void quartz_bufdestroy(quartz_Buffer *buf) {
+	if(buf->buf == NULL) return;
 	quartz_free(buf->Q, buf->buf, buf->cap);
 }
 
@@ -32,14 +33,14 @@ char *quartz_bufreserve(quartz_Buffer *buf, size_t amount) {
 
 quartz_Errno quartz_bufputc(quartz_Buffer *buf, char c) {
 	char *p = quartz_bufreserve(buf, 1);
-	if(p == NULL) return QUARTZ_ENOMEM;
+	if(p == NULL) return quartz_oom(buf->Q);
 	*p = c;
 	return QUARTZ_OK;
 }
 
 quartz_Errno quartz_bufputcr(quartz_Buffer *buf, char c, size_t amount) {
 	char *p = quartz_bufreserve(buf, amount);
-	if(p == NULL) return QUARTZ_ENOMEM;
+	if(p == NULL) return quartz_oom(buf->Q);
 	quartzI_memset(p, c, amount);
 	return QUARTZ_OK;
 }
@@ -50,7 +51,7 @@ quartz_Errno quartz_bufputs(quartz_Buffer *buf, const char *s) {
 
 quartz_Errno quartz_bufputls(quartz_Buffer *buf, const char *s, size_t len) {
 	char *p = quartz_bufreserve(buf, len);
-	if(p == NULL) return QUARTZ_ENOMEM;
+	if(p == NULL) return quartz_oom(buf->Q);
 	quartzI_memcpy(p, s, len);
 	return QUARTZ_OK;
 }

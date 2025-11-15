@@ -66,6 +66,7 @@ quartz_Type quartzI_trueTypeOf(quartz_Value v) {
 	if(obj->type == QUARTZ_OLIST) return QUARTZ_TLIST;
 	if(obj->type == QUARTZ_OTUPLE) return QUARTZ_TTUPLE;
 	if(obj->type == QUARTZ_OSET) return QUARTZ_TSET;
+	if(obj->type == QUARTZ_OMAP) return QUARTZ_TMAP;
 	if(obj->type == QUARTZ_OSTRUCT) return QUARTZ_TSTRUCT;
 	if(obj->type == QUARTZ_OFUNCTION) return QUARTZ_TFUNCTION;
 	if(obj->type == QUARTZ_OCLOSURE) return QUARTZ_TFUNCTION;
@@ -271,6 +272,12 @@ static bool quartzI_mapPutInArray(quartz_MapPair *pairs, size_t cap, quartz_Valu
 		i++;
 	}
 	return false;
+}
+
+bool quartzI_truthyValue(quartz_Value v) {
+	if(v.type == QUARTZ_VNULL) return false;
+	if(v.type == QUARTZ_VBOOL) return v.b;
+	return true;
 }
 
 bool quartzI_isLegalPair(quartz_MapPair pair) {

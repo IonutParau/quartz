@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 	quartz_Buffer buf;
 	quartz_bufinit(Q, &buf, 64);
 	quartz_bufputs(&buf, "io.writeln(\"Hello, world!\")\n");
-	quartz_bufputs(&buf, "io.writeln(_PATHCONF)\n");
+	quartz_bufputs(&buf, "io.writeln(_G, _R, _L, io.writeln)\n");
 	// commented out because we will handle compiling these later
 	//quartz_bufputs(&buf, "# comment\n");
 	//quartz_bufputs(&buf, "local x = 53\n");
