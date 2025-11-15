@@ -57,6 +57,20 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *so
 	// TODO: handle OOM better
 	quartz_Thread *Q = c->Q;
 
+	size_t constCount = quartzC_countConstants(c);
+	
+	quartz_Upvalue *upvaldefs = quartz_alloc(Q, sizeof(quartz_Upvalue) * c->upvalc);
+	quartz_UpvalDesc *curUp = c->upvalList;
+	for(size_t i = 0; i < c->upvalc; i++, curUp = curUp->next) {
+		upvaldefs[c->upvalc - i - 1] = curUp->info;
+	}
+	
+	quartz_Constants *curConst = quartzC_getConstants(c);
+	quartz_Value *consts = quartz_alloc(Q, sizeof(quartz_Value) * constCount);
+	for(size_t i = 0; i < constCount; i++, curConst = curConst->next) {
+		consts[constCount - i - 1] = curConst->val;
+	}
+
 	quartz_Map *module = quartzI_newMap(Q, 0);
 	quartz_Function *f = (quartz_Function *)quartzI_allocObject(Q, QUARTZ_OFUNCTION, sizeof(quartz_Function));
 	f->module = module;
@@ -72,21 +86,11 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *so
 	}
 	f->codesize = c->codecap;
 	f->chunkname = source;
-	f->constCount = quartzC_countConstants(c);
+	f->constCount = constCount;
 	f->upvalCount = c->upvalc;
 	// gosh darn constants
-	quartz_Upvalue *upvaldefs = quartz_alloc(Q, sizeof(quartz_Upvalue) * c->upvalc);
-	quartz_UpvalDesc *curUp = c->upvalList;
-	for(size_t i = 0; i < c->upvalc; i++, curUp = curUp->next) {
-		upvaldefs[c->upvalc - i - 1] = curUp->info;
-	}
 	f->upvaldefs = upvaldefs;
 
-	quartz_Constants *curConst = quartzC_getConstants(c);
-	quartz_Value *consts = quartz_alloc(Q, sizeof(quartz_Value) * f->constCount);
-	for(size_t i = 0; i < f->constCount; i++, curConst = curConst->next) {
-		consts[f->constCount - i - 1] = curConst->val;
-	}
 	f->consts = consts;
 	quartzC_freeCompilerNoCode(*c);
 	

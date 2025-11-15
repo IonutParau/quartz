@@ -46,8 +46,37 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 		}
 	}
 
-	if(argc == 2) {
+	if(argc >= 2) {
 		// TODO: run script
+		const char *path = argv[1];
+
+		FILE *f = fopen(path, "r");
+		if(f == NULL) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		}
+
+		fseek(f, 0, SEEK_END);
+		size_t fileSize = ftell(f);
+		fseek(f, 0, SEEK_SET);
+
+		char *buf = malloc(fileSize+1);
+		size_t read = 0;
+		while(read < fileSize) {
+			size_t fresh = fread(buf + read, 1, fileSize - read, f);
+			read += fresh;
+		}
+		buf[fileSize] = '\0';
+
+		err = quartz_pushscript(Q, buf, path);
+		free(buf);
+		if(err) return err;
+
+		for(size_t i = 2; i < argc; i++) {
+			err = quartz_pushstring(Q, argv[i]);
+			if(err) return err;
+		}
+
+		return quartz_call(Q, argc - 2, QUARTZ_CALL_STATIC);
 	}
 
 	return QUARTZ_OK;

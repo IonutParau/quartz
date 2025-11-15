@@ -87,7 +87,7 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		if(arg.whence == QUARTZ_SEEK_SET) whence = SEEK_SET;
 		if(arg.whence == QUARTZ_SEEK_CUR) whence = SEEK_CUR;
 		if(arg.whence == QUARTZ_SEEK_END) whence = SEEK_END;
-		if(fseek(f, whence, arg.off)) {
+		if(fseek(f, arg.off, whence)) {
 			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
 		}
 		*buflen = ftell(f);

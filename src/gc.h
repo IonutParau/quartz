@@ -16,6 +16,7 @@ quartz_Struct *quartzI_newStruct(quartz_Thread *Q, quartz_Tuple *fields);
 quartz_Pointer *quartzI_newPointer(quartz_Thread *Q);
 quartz_Thread *quartzI_newThread(quartz_Thread *Q);
 
+void quartzI_trygc(quartz_Thread *Q);
 void quartzI_emptyTemporaries(quartz_Thread *Q);
 void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj);
 

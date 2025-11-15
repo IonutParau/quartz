@@ -507,15 +507,15 @@ static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code,
 		if(p.pErr == QUARTZ_PARSE_EINT) {
 			return quartz_erroras(Q, p.intErrno);
 		} else if(p.pErr == QUARTZ_PARSE_EBADTOK) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:expected %s", src->buf, p.errloc, p.tokExpected);
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: expected %s", src->buf, p.errloc, p.tokExpected);
 		} else if(p.pErr == QUARTZ_PARSE_ESTMT) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:statement expected", src->buf, p.errloc);
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: statement expected", src->buf, p.errloc);
 		} else if(p.pErr == QUARTZ_PARSE_EEXPR) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:expression expected", src->buf, p.errloc);
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: expression expected", src->buf, p.errloc);
 		} else if(p.pErr == QUARTZ_PARSE_ELEX) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:%s", src->buf, p.errloc, quartzI_lexErrors[p.lexErr]);
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: %s", src->buf, p.errloc, quartzI_lexErrors[p.lexErr]);
 		} else if(p.pErr == QUARTZ_PARSE_ENOLOOP) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u:statement not in loop", src->buf, p.errloc);
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: statement not in loop", src->buf, p.errloc);
 		} else {
 			return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown parser error");
 		}

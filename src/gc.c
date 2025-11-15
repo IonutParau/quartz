@@ -27,25 +27,159 @@ double quartz_gcRatio(quartz_Thread *Q, double ratio) {
 
 static void quartz_grayValue(quartz_Thread *Q, quartz_Value value);
 
-static void quartz_markObject(quartz_Thread *Q, quartz_Object *obj) {
-	obj->flags |= QUARTZ_FLAG_MARKED;
-	if(obj->flags & QUARTZ_FLAG_MARKED) return;
+static void quartz_markThread(quartz_Thread *Q) {
+	if(Q->resumedBy) quartz_markThread(Q->resumedBy);
+	if(Q->resuming) quartz_markThread(Q->resuming);
 
-	// TODO: gray everything
+	for(size_t i = 0; i < Q->callLen; i++) {
+		quartz_grayValue(Q, Q->call[i].f);
+	}
+	for(size_t i = 0; i < Q->stackLen; i++) {
+		quartz_grayValue(Q, Q->stack[i].value);
+	}
 }
 
-static void quartz_grayValue(quartz_Thread *Q, quartz_Value value) {
-	if(value.type != QUARTZ_VOBJ) return;
-	quartz_Object *obj = value.obj;
+static void quartz_grayObject(quartz_Thread *Q, quartz_Object *obj) {
 	if(obj->flags & QUARTZ_FLAG_GRAY) return;
+	// black
+	if(obj->flags & QUARTZ_FLAG_MARKED) return;
 	obj->flags |= QUARTZ_FLAG_GRAY;
 	obj->nextGray = Q->gState->graySet;
 	Q->gState->graySet = obj;
 }
 
+static void quartz_markObject(quartz_Thread *Q, quartz_Object *obj) {
+	if(obj->flags & QUARTZ_FLAG_MARKED) return;
+	obj->flags |= QUARTZ_FLAG_MARKED;
+
+	// main thread is not in the object list, it is exempt from all this.
+	if(obj == &Q->gState->mainThread->obj) {
+		return;
+	}
+
+	if(obj->type == QUARTZ_OLIST) {
+		quartz_List *l = (quartz_List *)obj;
+		for(size_t i = 0; i < l->len; i++) {
+			quartz_grayValue(Q, l->vals[i]);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OTUPLE) {
+		quartz_Tuple *l = (quartz_Tuple *)obj;
+		for(size_t i = 0; i < l->len; i++) {
+			quartz_grayValue(Q, l->vals[i]);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OSET) {
+		quartz_Set *l = (quartz_Set *)obj;
+		for(size_t i = 0; i < l->len; i++) {
+			quartz_grayValue(Q, l->vals[i]);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OMAP) {
+		quartz_Map *m = (quartz_Map *)obj;
+		for(size_t i = 0; i < m->capacity; i++) {
+			if(quartzI_isLegalPair(m->pairs[i])) {
+				quartz_grayValue(Q, m->pairs[i].key);
+				quartz_grayValue(Q, m->pairs[i].val);
+			}
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OSTRUCT) {
+		quartz_Struct *s = (quartz_Struct *)obj;
+		quartz_grayObject(Q, &s->fields->obj);
+		for(size_t i = 0; i < s->fields->len; i++) {
+			quartz_grayValue(Q, s->pairs[i]);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OFUNCTION) {
+		quartz_Function *f = (quartz_Function *)obj;
+		quartz_grayObject(Q, &f->chunkname->obj);
+		quartz_grayObject(Q, &f->module->obj);
+		quartz_grayObject(Q, &f->globals->obj);
+		for(size_t i = 0; i < f->constCount; i++) {
+			quartz_grayValue(Q, f->consts[i]);
+		}
+		for(size_t i = 0; i < f->upvalCount; i++) {
+			quartz_grayObject(Q, &f->upvaldefs[i].name->obj);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OCLOSURE) {
+		quartz_Closure *f = (quartz_Closure *)obj;
+		quartz_grayValue(Q, f->f);
+		for(size_t i = 0; i < f->len; i++) {
+			quartz_grayValue(Q, f->ups[i]);
+		}
+		return;
+	}
+	if(obj->type == QUARTZ_OPOINTER) {
+		quartz_Pointer *p = (quartz_Pointer *)obj;
+		quartz_grayValue(Q, p->val);
+		return;
+	}
+	if(obj->type == QUARTZ_OTHREAD) {
+		quartz_Thread *q = (quartz_Thread *)obj;
+		quartz_markThread(q);
+		return;
+	}
+	if(obj->type == QUARTZ_OUSERDATA) {
+		quartz_Userdata *u = (quartz_Userdata *)obj;
+		for(size_t i = 0; i < u->associatedLen; i++) {
+			quartz_grayValue(Q, u->associated[i]);
+		}
+		return;
+	}
+}
+
+static void quartz_grayValue(quartz_Thread *Q, quartz_Value value) {
+	if(value.type != QUARTZ_VOBJ) return;
+	quartz_Object *obj = value.obj;
+	quartz_grayObject(Q, obj);
+}
+
 void quartz_gc(quartz_Thread *Q) {
 	if(Q->gState->gcBlocked) return; // not allowed
-	// TODO: garbage collection
+	
+	// This GC is super barebones, and thus horrible.
+	// It *MUST* be replaced with a better impl.
+	// Current GC issues:
+	// - stop-the-world, which sucks in realtime contexts
+	// - userdata may outlive associated values while sweeping, not a great state to be in.
+	
+	quartz_grayObject(Q, &Q->gState->globals->obj);
+	quartz_grayObject(Q, &Q->gState->loaded->obj);
+	quartz_grayObject(Q, &Q->gState->registry->obj);
+	quartz_markThread(Q);
+
+	for(size_t i = 0; i < Q->gState->tmpArrSize; i++) {
+		quartz_grayObject(Q, Q->gState->tmpArr[i]);
+	}
+
+	while(Q->gState->graySet) {
+		quartz_Object *o = Q->gState->graySet;
+		Q->gState->graySet = o->nextGray;
+		o->flags &= ~QUARTZ_FLAG_GRAY;
+		quartz_markObject(Q, o);
+	}
+
+	quartz_Object **sweeping = &Q->gState->objList;
+	while(*sweeping) {
+		quartz_Object *o = *sweeping;
+		if(o->flags & QUARTZ_FLAG_MARKED) {
+			o->flags &= ~QUARTZ_FLAG_MARKED;
+			sweeping = &o->nextObject;
+		} else {
+			*sweeping = o->nextObject;
+			quartzI_freeObject(Q, o);
+		}
+	}
+
+	Q->gState->gcTarget = Q->gState->gcRatio * Q->gState->gcCount;
 }
 
 quartz_Object *quartzI_allocObject(quartz_Thread *Q, quartz_ObjectType type, size_t size) {
@@ -172,6 +306,12 @@ quartz_Thread *quartzI_newThread(quartz_Thread *Q) {
 	t->stackCap = defaultStackSize;
 	t->stack = stackBuf;
 	return t;
+}
+
+void quartzI_trygc(quartz_Thread *Q) {
+	if(Q->gState->gcCount > Q->gState->gcTarget) {
+		quartz_gc(Q);
+	}
 }
 
 void quartzI_emptyTemporaries(quartz_Thread *Q) {

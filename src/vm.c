@@ -99,7 +99,6 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 	if(!c) return QUARTZ_OK;
 	quartz_Errno err = QUARTZ_OK;
 
-
 	quartz_Instruction *pc = c->q.pc;
 	quartz_Function *f = quartzI_getFunction(c->f);
 	quartz_Closure *closure = quartzI_getClosure(c->f);
@@ -109,13 +108,17 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 	}
 	while(true) {
 		quartzI_emptyTemporaries(Q);
+		// for anyone reading, this means if memory usage
+		// is above the intended threshhold, do a GC.
+		// Not that we do a GC on EVERY INSTRUCTION, that'd be devastating.
+		quartzI_trygc(Q);
 		if(pc->op == QUARTZ_OP_NOP) {
 			// nothing
 		} else if(pc->op == QUARTZ_OP_RETMOD) {
 			Q->stack[c->funcStackIdx] = (quartz_StackEntry) {
 				.isPtr = false,
 				.value.type = QUARTZ_VOBJ,
-				.value.obj = &f->obj,
+				.value.obj = &f->module->obj,
 			};
 			goto done;
 		} else if(pc->op == QUARTZ_OP_PUSHINT) {
