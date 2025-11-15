@@ -98,14 +98,9 @@ typedef struct quartz_Struct {
 	quartz_Value pairs[];
 } quartz_Struct;
 
-typedef enum quartz_UpvalueType {
-	QUARTZ_UPVAL_CONST = 0,
-	QUARTZ_UPVAL_PTR = 1,
-} quartz_UpvalueType;
-
 typedef struct quartz_Upvalue {
 	quartz_String *name;
-	quartz_UpvalueType upvalType;
+	bool inStack;
 	int stackIndex;
 } quartz_Upvalue;
 
