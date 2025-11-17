@@ -99,9 +99,8 @@ typedef struct quartz_Struct {
 } quartz_Struct;
 
 typedef struct quartz_Upvalue {
-	quartz_String *name;
 	bool inStack;
-	int stackIndex;
+	unsigned short stackIndex;
 } quartz_Upvalue;
 
 typedef enum quartz_FunctionFlags {

@@ -152,6 +152,10 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			if(err) goto done;
 			err = quartz_getindex(Q);
 			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_VARARGPREP) {
+			size_t argc = quartz_getstacksize(Q);
+			err = quartz_pushtuple(Q, argc - pc->uD);
+			if(err) goto done;
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;

@@ -453,6 +453,59 @@ quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var);
 // this will modify the value stored at x.
 quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result);
 
+typedef enum quartz_BinOp {
+	// pushes A[B]
+	QUARTZ_BINOP_INDEX = 0,
+	// pushes A + B
+	QUARTZ_BINOP_ADD,
+	// pushes A - B
+	QUARTZ_BINOP_SUB,
+	// pushes A * B
+	QUARTZ_BINOP_MLT,
+	// pushes A / B
+	QUARTZ_BINOP_DIV,
+	// pushes A // B
+	QUARTZ_BINOP_IDIV,
+	// pushes A % B
+	QUARTZ_BINOP_MOD,
+	// pushes A ** B
+	QUARTZ_BINOP_EXP,
+	// pushes A & B
+	QUARTZ_BINOP_BAND,
+	// pushes A | B
+	QUARTZ_BINOP_BOR,
+	// pushes A ^ B
+	QUARTZ_BINOP_BXOR,
+	// pushes A << B
+	QUARTZ_BINOP_BSHIFTL,
+	// pushes A >> B
+	QUARTZ_BINOP_BSHIFTR,
+	// pushes A <<< B
+	QUARTZ_BINOP_BROTL,
+	// pushes A >>> B
+	QUARTZ_BINOP_BROTR,
+	// pushes A .. B
+	QUARTZ_BINOP_CONCAT,
+	// pushes A == B
+	QUARTZ_BINOP_EQL,
+	// pushes A != B
+	QUARTZ_BINOP_NEQL,
+	// pushes A < B
+	QUARTZ_BINOP_LESS,
+	// pushes A > B
+	QUARTZ_BINOP_GREATER,
+	// pushes A <= B
+	QUARTZ_BINOP_LESSEQL,
+	// pushes A >= B
+	QUARTZ_BINOP_GREATEREQL,
+} quartz_BinOp;
+
+// pop 2 values, push them.
+// NOTE: push(34), push(35), binop(+) will do 34 + 35
+// This matters for operations with specific orders.
+// 34 in this case is A, and 35 is B. See operator descriptions.
+quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op);
+
 // getting data out
 
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err);

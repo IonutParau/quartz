@@ -11,11 +11,16 @@
 // Because of that, the full equasion is localc - i - 1
 // Same things for upvalues
 typedef struct quartz_Local {
-	quartz_String *name;
+	const char *str;
+	unsigned int strlen;
+	unsigned int index;
 	struct quartz_Local *next;
 } quartz_Local;
 
 typedef struct quartz_UpvalDesc {
+	const char *str;
+	unsigned int strlen;
+	unsigned int index;
 	quartz_Upvalue info;
 	struct quartz_UpvalDesc *next;
 } quartz_UpvalDesc;
@@ -54,6 +59,17 @@ typedef struct quartz_Compiler {
 	size_t codecap;
 } quartz_Compiler;
 
+typedef enum quartz_VarType {
+	QUARTZC_VAR_LOCAL,
+	QUARTZC_VAR_UPVAL,
+	QUARTZC_VAR_GLOBAL,
+} quartz_VarType;
+
+typedef struct quartz_Variable {
+	int type;
+	int index;
+} quartz_Variable;
+
 quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c);
 void quartzC_freeFailingCompiler(quartz_Compiler c);
 quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *source, quartz_Map *globals);
@@ -65,6 +81,10 @@ quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction ins
 quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len);
 quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val);
 quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t len, size_t *idx);
+
+// effectively resolves a name, and also signals the transfer of upvalues.
+quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len, quartz_Variable *var);
+
 quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node);
 quartz_Errno quartzC_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);
 quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node);

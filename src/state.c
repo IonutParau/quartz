@@ -581,6 +581,46 @@ quartz_Errno quartz_pushmapx(quartz_Thread *Q, size_t cap) {
 	return quartzI_pushRawMap(Q, m);
 }
 
+quartz_Errno quartz_pushlist(quartz_Thread *Q, size_t len) {
+	return quartz_pushlistx(Q, len, len);
+}
+
+quartz_Errno quartz_pushlistx(quartz_Thread *Q, size_t len, size_t cap) {
+	quartz_Errno err = quartz_stackassert(Q, len);
+	if(err) return err;
+	if(cap < len) cap = len;
+	size_t arrStart = quartz_gettop(Q) - len;
+	quartz_List *l = quartzI_newList(Q, cap);
+	if(l == NULL) return quartz_oom(Q);
+	for(size_t i = 0; i < len; i++) {
+		l->vals[i] = quartzI_getStackValue(Q, arrStart + i);
+	}
+	l->len = len;
+	err = quartz_popn(Q, len);
+	if(err) return err;
+	return quartzI_pushRawValue(Q, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &l->obj,
+	});
+}
+
+quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len) {
+	quartz_Errno err = quartz_stackassert(Q, len);
+	if(err) return err;
+	size_t arrStart = quartz_gettop(Q) - len;
+	quartz_Tuple *t = quartzI_newTuple(Q, len);
+	if(t == NULL) return quartz_oom(Q);
+	for(size_t i = 0; i < len; i++) {
+		t->vals[i] = quartzI_getStackValue(Q, arrStart + i);
+	}
+	err = quartz_popn(Q, len);
+	if(err) return err;
+	return quartzI_pushRawValue(Q, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &t->obj,
+	});
+}
+
 quartz_Errno quartz_pushregistry(quartz_Thread *Q) {
 	return quartzI_pushRawMap(Q, Q->gState->registry);
 }

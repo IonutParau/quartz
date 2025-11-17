@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
 
 	err = interpreter(Q, argc, argv);
 	if(err) {
+		printf("ERROR!\n");
 		quartz_pusherror(Q);
 		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
 		return 1;

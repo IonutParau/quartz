@@ -104,9 +104,6 @@ static void quartz_markObject(quartz_Thread *Q, quartz_Object *obj) {
 		for(size_t i = 0; i < f->constCount; i++) {
 			quartz_grayValue(Q, f->consts[i]);
 		}
-		for(size_t i = 0; i < f->upvalCount; i++) {
-			quartz_grayObject(Q, &f->upvaldefs[i].name->obj);
-		}
 		return;
 	}
 	if(obj->type == QUARTZ_OCLOSURE) {

@@ -52,6 +52,7 @@ const char *quartzI_lexSymbols[] = {
 	"#{", // begin map
 	"**", // exponentiation
 	"..", // concatination
+	"//", // integer division
 	// 1-char
 	"+", // addition
 	"-", // subtraction

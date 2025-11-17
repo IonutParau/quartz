@@ -166,6 +166,39 @@ quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t le
 	return QUARTZ_OK;
 }
 
+quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len, quartz_Variable *var) {
+	// locals
+	{
+		quartz_Local *local = c->localList;
+		while(local) {
+			if(quartzI_strleql(str, len, local->str, local->strlen)) {
+				var->type = QUARTZC_VAR_LOCAL;
+				var->index = local->index;
+				return QUARTZ_OK;
+			}
+			local = local->next;
+		}
+	}
+	
+	// upvalues
+	{
+		quartz_UpvalDesc *up = c->upvalList;
+		while(up) {
+			if(quartzI_strleql(str, len, up->str, up->strlen)) {
+				var->type = QUARTZC_VAR_UPVAL;
+				var->index = up->index;
+				return QUARTZ_OK;
+			}
+			up = up->next;
+		}
+	}
+
+	// TODO: stealing from the top-scope
+
+	var->type = QUARTZC_VAR_GLOBAL;
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 	quartz_Thread *Q = c->Q;
 	quartz_Errno err;
@@ -173,8 +206,17 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 	if(node->type == QUARTZ_NODE_VARIABLE) {
 		// this one's a little complicated
 
-		// TODO: check if local
-		// TODO: check if upvalue 
+		quartz_Variable var;
+		err = quartzC_useVariable(c, node->str, node->strlen, &var);
+		if(err) return err;
+
+		if(var.type == QUARTZC_VAR_LOCAL) {
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_LOAD,
+				.uD = var.index,
+				.line = node->line,
+			});
+		}
 
 		// must be a global
 		size_t globalConst;
@@ -255,6 +297,19 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		return QUARTZ_OK;
 	}
 
+	if(node->type == QUARTZ_NODE_LOCAL) {
+		err = quartzC_pushValue(c, node->children[0]);
+		if(err) return err;
+		quartz_Local *l = quartz_alloc(Q, sizeof(quartz_Local));
+		if(l == NULL) return quartz_oom(Q);
+		l->str = node->str;
+		l->strlen = node->strlen;
+		l->index = c->localc++;
+		l->next = c->localList;
+		c->localList = l;
+		return QUARTZ_OK;
+	}
+
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad statement node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }
 
@@ -262,6 +317,20 @@ quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree) {
 	quartz_Errno err;
 	
 	// TODO: prepend varargprep instruction
+	err = quartzC_writeInstruction(c, (quartz_Instruction) {
+		.op = QUARTZ_OP_VARARGPREP,
+		.uD = 0,
+		.line = 0,
+	});
+	if(err) return err;
+
+	quartz_Local *argv = quartz_alloc(c->Q, sizeof(quartz_Local));
+	if(argv == NULL) return quartz_oom(c->Q);
+	argv->str = "argv";
+	argv->strlen = quartzI_strlen(argv->str);
+	argv->index = c->localc++;
+	argv->next = c->localList;
+	c->localList = argv;
 	
 	for(size_t i = 0; i < tree->childCount; i++) {
 		err = quartzC_runStatement(c, tree->children[i]);

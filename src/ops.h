@@ -12,6 +12,7 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_CALL, // invoke f with B args, call flags are in C.
 	QUARTZ_OP_GETFIELD, // pop field, pop value, push value[field]
 	QUARTZ_OP_GETCONSTFIELD, // like getfield except the field is the constant in uD.
+	QUARTZ_OP_VARARGPREP, // handles ..., the intended arg count is in uD.
 } quartz_OpCode;
 
 #endif
