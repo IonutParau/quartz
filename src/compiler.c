@@ -6,6 +6,44 @@
 #include "gc.h"
 #include "ops.h"
 
+static const char *quartzC_binOpStrs[QUARTZ_BINOPS_COUNT] = {
+	[QUARTZ_BINOP_INDEX] = "", // yeah no
+	[QUARTZ_BINOP_ADD] = "+",
+	[QUARTZ_BINOP_SUB] = "-",
+	[QUARTZ_BINOP_MLT] = "*",
+	[QUARTZ_BINOP_DIV] = "/",
+	[QUARTZ_BINOP_IDIV] = "//",
+	[QUARTZ_BINOP_MOD] = "%",
+	[QUARTZ_BINOP_EXP] = "**",
+	[QUARTZ_BINOP_BAND] = "&",
+	[QUARTZ_BINOP_BOR] = "|",
+	[QUARTZ_BINOP_BXOR] = "^",
+	[QUARTZ_BINOP_BSHIFTL] = "<<",
+	[QUARTZ_BINOP_BSHIFTR] = ">>",
+	[QUARTZ_BINOP_BROTL] = "<<<",
+	[QUARTZ_BINOP_BROTR] = ">>>",
+	[QUARTZ_BINOP_CONCAT] = "..",
+	[QUARTZ_BINOP_EQL] = "==",
+	[QUARTZ_BINOP_NEQL] = "!=",
+	[QUARTZ_BINOP_LESS] = "<",
+	[QUARTZ_BINOP_GREATER] = ">",
+	[QUARTZ_BINOP_LESSEQL] = "<=",
+	[QUARTZ_BINOP_GREATEREQL] = ">=",
+};
+
+static quartz_Errno quartzC_getBinOp(quartz_Thread *Q, const char *str, size_t len, quartz_BinOp *op) {
+	for(size_t i = 0; i < QUARTZ_BINOPS_COUNT; i++) {
+		const char *s = quartzC_binOpStrs[i];
+		if(quartzI_strleqlc(str, len, s)) {
+			*op = i;
+			return QUARTZ_OK;
+		}
+	}
+
+	// no idea
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown operator: %z", len, str);
+}
+
 quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c) {
 	quartz_Errno err;
 	c->Q = Q;
@@ -252,6 +290,17 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 			.line = node->line,
 		});
 	}
+	
+	if(node->type == QUARTZ_NODE_INDEX) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_EXECOP,
+			.B = 2,
+			.C = QUARTZ_BINOP_INDEX,
+			.line = node->line,
+		});
+	}
 
 	if(node->type == QUARTZ_NODE_NUM) {
 		// this DOES NOT WORK FOR FLOATS but we DO NOT CARE RIGHT NOW
@@ -260,6 +309,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_PUSHINT,
 			.sD = i,
+			.line = node->line,
 		});
 	}
 	
@@ -274,6 +324,24 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 			.line = node->line,
 		});
 		return QUARTZ_OK;
+	}
+
+	if(node->type == QUARTZ_NODE_OP) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+
+		if(node->childCount == 2) {
+			quartz_BinOp op;
+			err = quartzC_getBinOp(Q, node->str, node->strlen, &op);
+			if(err) return err;
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_EXECOP,
+				.B = 2,
+				.C = op,
+				.line = node->line,
+			});
+		}
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad operator parity: %u (line %u)", (quartz_Uint)node->childCount, (quartz_Uint)node->line);
 	}
 
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad expression node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);

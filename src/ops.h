@@ -13,6 +13,7 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_GETFIELD, // pop field, pop value, push value[field]
 	QUARTZ_OP_GETCONSTFIELD, // like getfield except the field is the constant in uD.
 	QUARTZ_OP_VARARGPREP, // handles ..., the intended arg count is in uD.
+	QUARTZ_OP_EXECOP, // B is 2 for binops and C is the BinOp.
 } quartz_OpCode;
 
 #endif

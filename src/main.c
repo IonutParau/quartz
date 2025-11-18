@@ -40,8 +40,10 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			}
 			err = quartz_pushlscript(Q, line, linelen, src, srclen);
 			if(err) return err;
+			err = quartz_pushlstring(Q, src, srclen);
+			if(err) return err;
 			// not protected, L
-			err = quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+			err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
 			if(err) return err;
 		}
 	}
@@ -71,12 +73,12 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 		free(buf);
 		if(err) return err;
 
-		for(size_t i = 2; i < argc; i++) {
+		for(size_t i = 1; i < argc; i++) {
 			err = quartz_pushstring(Q, argv[i]);
 			if(err) return err;
 		}
 
-		return quartz_call(Q, argc - 2, QUARTZ_CALL_STATIC);
+		return quartz_call(Q, argc - 1, QUARTZ_CALL_STATIC);
 	}
 
 	return QUARTZ_OK;

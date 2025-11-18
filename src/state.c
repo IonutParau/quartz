@@ -459,6 +459,17 @@ quartz_Errno quartz_pushlstring(quartz_Thread *Q, const char *s, size_t len) {
 	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &str->obj});
 }
 
+char *quartz_pushastring(quartz_Thread *Q, size_t len, quartz_Errno *err) {
+	quartz_String *str = quartzI_newString(Q, len, NULL);
+	if(str == NULL) {
+		*err = quartz_oom(Q);
+		return NULL;
+	}
+	*err = quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VOBJ, .obj = &str->obj});
+	if(*err) return NULL;
+	return str->buf;
+}
+
 quartz_Errno quartz_pushfstring(quartz_Thread *Q, const char *fmt, ...) {
 	va_list arg;
 	va_start(arg, fmt);
@@ -871,6 +882,52 @@ quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
 		}
 	}
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad cast from %s to %s", quartz_typenames[t], quartz_typenames[result]);
+}
+
+quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
+	quartz_Errno err = quartz_stackassert(Q, 2);
+	if(err) return err;
+	if(op == QUARTZ_BINOP_INDEX) return quartz_getindex(Q);
+
+
+	quartz_Type atype = quartz_typeof(Q, -2);
+	quartz_Type btype = quartz_typeof(Q, -1);
+
+	if(op == QUARTZ_BINOP_CONCAT) {
+		err = quartz_cast(Q, -2, QUARTZ_TSTR);
+		if(err) return err;
+		err = quartz_cast(Q, -1, QUARTZ_TSTR);
+		if(err) return err;
+		size_t alen;
+		const char *a = quartz_tolstring(Q, -2, &alen, &err);
+		if(err) return err;
+		size_t blen;
+		const char *b = quartz_tolstring(Q, -1, &blen, &err);
+		if(err) return err;
+		// Popping them will cause GC issues
+		// TODO: fix that
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		char *c = quartz_pushastring(Q, alen + blen, &err);
+		if(err) return err;
+		quartzI_memcpy(c, a, alen);
+		quartzI_memcpy(c + alen, b, blen);
+		return QUARTZ_OK;
+	}
+	if(atype == QUARTZ_TINT) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		if(op == QUARTZ_BINOP_ADD) {
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushint(Q, a + b);
+			}
+		}
+	}
+
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid operator for type %s", quartz_typenames[atype]);
 }
 
 const char *quartz_tostring(quartz_Thread *Q, int x, quartz_Errno *err) {

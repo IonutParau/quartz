@@ -342,6 +342,7 @@ quartz_Errno quartz_pushcomplex(quartz_Thread *Q, quartz_Complex c);
 quartz_Errno quartz_pushcomplexsum(quartz_Thread *Q, quartz_Real real, quartz_Real imaginary);
 quartz_Errno quartz_pushstring(quartz_Thread *Q, const char *s);
 quartz_Errno quartz_pushlstring(quartz_Thread *Q, const char *s, size_t len);
+char *quartz_pushastring(quartz_Thread *Q, size_t len, quartz_Errno *err);
 quartz_Errno quartz_pushfstring(quartz_Thread *Q, const char *fmt, ...);
 quartz_Errno quartz_pushfstringv(quartz_Thread *Q, const char *fmt, va_list arg);
 quartz_Errno quartz_pushcfunction(quartz_Thread *Q, quartz_CFunction *f);
@@ -498,6 +499,9 @@ typedef enum quartz_BinOp {
 	QUARTZ_BINOP_LESSEQL,
 	// pushes A >= B
 	QUARTZ_BINOP_GREATEREQL,
+
+	// internal
+	QUARTZ_BINOPS_COUNT,
 } quartz_BinOp;
 
 // pop 2 values, push them.

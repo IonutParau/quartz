@@ -335,6 +335,11 @@ static bool quartzP_binOpBp(const char *s, size_t len, size_t *left, size_t *rig
 		*right = 206;
 		return true;
 	}
+	if(len == 2 && s[0] == '.' && s[1] == '.') {
+		*left = 301;
+		*right = 302;
+		return true;
+	}
 	return false;
 }
 

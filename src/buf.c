@@ -164,6 +164,12 @@ quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) 
 				err = quartz_bufputs(buf, s);
 				if(err) return err;
 			}
+			if(data.d == 'z') {
+				size_t len = va_arg(args, size_t);
+				const char *s = va_arg(args, const char *);
+				err = quartz_bufputls(buf, s, len);
+				if(err) return err;
+			}
 			if(data.d == 'd') {
 				quartz_Int d = va_arg(args, quartz_Int);
 				err = quartz_bufputnx(buf, d, 10, data.min, data.minZeroed);
