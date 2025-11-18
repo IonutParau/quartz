@@ -27,7 +27,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 		printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
 		char *line = NULL;
 		size_t linebuflen = 0;
-		const char *src = "stdin";
+		const char *src = "(stdin)";
 		size_t srclen = strlen(src);
 		while(true) {
 			fputs("> ", stdout);

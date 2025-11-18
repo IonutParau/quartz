@@ -1,5 +1,25 @@
 #include "quartz.h"
 
+static quartz_Errno quartz_libcore_len(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err;
+	size_t x = quartz_len(Q, 0, &err);
+	if(err) return err;
+	err = quartz_pushint(Q, x);
+	if(err) return err;
+	quartz_return(Q, -1);
+	return QUARTZ_OK;
+}
+
+static quartz_Errno quartz_libcore_cap(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err;
+	size_t x = quartz_cap(Q, 0, &err);
+	if(err) return err;
+	err = quartz_pushint(Q, x);
+	if(err) return err;
+	quartz_return(Q, -1);
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	quartz_Errno err;
 
@@ -49,6 +69,18 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_pushregistry(Q);
 	if(err) return err;
 	err = quartz_setglobal(Q, "_R", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_len);
+	if(err) return err;
+	err = quartz_setglobal(Q, "len", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_cap);
+	if(err) return err;
+	err = quartz_setglobal(Q, "cap", -1);
 	if(err) return err;
 	quartz_pop(Q);
 

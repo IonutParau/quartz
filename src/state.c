@@ -974,6 +974,7 @@ bool quartz_truthy(quartz_Thread *Q, int x) {
 
 // get the length (for tuple, array, map and struct)
 size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = QUARTZ_OK;
 	quartz_Value v = quartzI_getStackValue(Q, x);
 	if(v.type == QUARTZ_VOBJ) {
 		quartz_Object *o = v.obj;
@@ -991,9 +992,13 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
 		}
 		if(o->type == QUARTZ_OMAP) {
 			quartz_Map *m = (quartz_Map *)o;
-			// this isn't the amount of pairs alive
-			// TODO: re-evaluate this behavior
-			return m->filledAmount;
+			size_t len = 0;
+			for(size_t i = 0; i < m->capacity; i++) {
+				if(quartzI_isLegalPair(m->pairs[i])) {
+					len++;
+				}
+			}
+			return len;
 		}
 	}
 	*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenameof(Q, x));
@@ -1002,6 +1007,7 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
 
 // get the capacity (for array and map)
 size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = QUARTZ_OK;
 	quartz_Value v = quartzI_getStackValue(Q, x);
 	if(v.type == QUARTZ_VOBJ) {
 		quartz_Object *o = v.obj;
