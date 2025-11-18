@@ -7,6 +7,7 @@
 #include "value.c"
 #include "buf.c"
 #include "vm.c"
+#include "cmath.c"
 // compiler
 #include "lexer.c"
 #include "parser.c"
