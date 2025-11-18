@@ -325,6 +325,19 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		});
 		return QUARTZ_OK;
 	}
+	
+	if(node->type == QUARTZ_NODE_LIST) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+		size_t argc = node->childCount;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_LIST,
+			.B = argc,
+			.C = 0,
+			.line = node->line,
+		});
+		return QUARTZ_OK;
+	}
 
 	if(node->type == QUARTZ_NODE_OP) {
 		err = quartzC_pushChildArray(c, node);

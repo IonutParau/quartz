@@ -600,7 +600,7 @@ quartz_Errno quartz_pushlistx(quartz_Thread *Q, size_t len, size_t cap) {
 	quartz_Errno err = quartz_stackassert(Q, len);
 	if(err) return err;
 	if(cap < len) cap = len;
-	size_t arrStart = quartz_gettop(Q) - len;
+	size_t arrStart = quartz_getstacksize(Q) - len;
 	quartz_List *l = quartzI_newList(Q, cap);
 	if(l == NULL) return quartz_oom(Q);
 	for(size_t i = 0; i < len; i++) {
@@ -618,7 +618,7 @@ quartz_Errno quartz_pushlistx(quartz_Thread *Q, size_t len, size_t cap) {
 quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len) {
 	quartz_Errno err = quartz_stackassert(Q, len);
 	if(err) return err;
-	size_t arrStart = quartz_gettop(Q) - len;
+	size_t arrStart = quartz_getstacksize(Q) - len;
 	quartz_Tuple *t = quartzI_newTuple(Q, len);
 	if(t == NULL) return quartz_oom(Q);
 	for(size_t i = 0; i < len; i++) {

@@ -21,6 +21,8 @@ typedef enum quartz_NodeType {
 	QUARTZ_NODE_CALL,
 	// some operator, stored in str + strlen. Where its binary or unary is based off childCount.
 	QUARTZ_NODE_OP,
+	// list of stuff
+	QUARTZ_NODE_LIST,
 } quartz_NodeType;
 
 typedef struct quartz_Node {

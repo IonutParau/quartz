@@ -298,6 +298,49 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 		return quartzI_addNodeChildOrFree(p->Q, parent, node);
 	}
 	
+	if(t.s[0] == '[') {
+		quartz_Node *n = quartzI_allocAST(p->Q, QUARTZ_NODE_LIST, p->curline, "", 0);
+		if(n == NULL) return quartz_oom(p->Q);
+
+		while(1) {
+			l = p->curline;
+			err = quartzP_peekToken(p, &t);
+			if(err) {
+				quartzI_freeAST(p->Q, n);
+				return err;
+			}
+			if(t.s[0] == ']') {
+				err = quartzP_nextToken(p, &t);
+				if(err) {
+					quartzI_freeAST(p->Q, n);
+					return err;
+				}
+				break;
+			}
+
+			err = quartzP_parseExpression(p, n);
+			if(err) {
+				quartzI_freeAST(p->Q, n);
+				return err;
+			}
+
+			err = quartzP_nextToken(p, &t);
+			if(err) {
+				quartzI_freeAST(p->Q, n);
+				return err;
+			}
+
+			if(t.s[0] == ']') break;
+			if(t.s[0] == ',') continue;
+			p->pErr = QUARTZ_PARSE_EBADTOK;
+			p->tokExpected = ",";
+			quartzI_freeAST(p->Q, n);
+			return QUARTZ_ESYNTAX;
+		}
+
+		return quartzI_addNodeChildOrFree(p->Q, parent, n);
+	}
+	
 	if(t.s[0] == '(') {
 		err = quartzP_parseExpression(p, parent);
 		if(err) return err;
