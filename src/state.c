@@ -507,11 +507,11 @@ static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code,
 	quartz_Compiler c;
 	quartz_Parser p;
 	quartzP_initParser(Q, &p, code->buf);
-	quartz_Node *n = quartzI_allocAST(Q, QUARTZ_NODE_PROGRAM, 1, "", 0);
+	quartz_Node *n = quartzI_allocAST(&p, QUARTZ_NODE_PROGRAM, 1, "", 0);
 	if(n == NULL) return quartz_oom(Q);
 	err = quartzP_parse(Q, &p, n);
 	if(err) {
-		quartzI_freeAST(Q, n);
+		quartzP_freeParser(&p);
 		quartz_Uint line = p.errloc;
 		if(p.pErr == QUARTZ_PARSE_EINT) {
 			return quartz_erroras(Q, p.intErrno);
@@ -525,22 +525,20 @@ static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code,
 			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: %s", src->buf, p.errloc, quartzI_lexErrors[p.lexErr]);
 		} else if(p.pErr == QUARTZ_PARSE_ENOLOOP) {
 			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s:%u: statement not in loop", src->buf, p.errloc);
-		} else {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown parser error");
 		}
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown parser error");
 	}
 	err = quartzC_initCompiler(Q, &c);
 	if(err) {
-		quartzI_freeAST(Q, n);
+		quartzP_freeParser(&p);
 		return err;
 	}
 	err = quartzC_compileProgram(&c, n);
+	quartzP_freeParser(&p);
 	if(err) {
-		quartzI_freeAST(Q, n);
 		quartzC_freeFailingCompiler(c);
 		return err;
 	}
-	quartzI_freeAST(Q, n);
 	quartz_Function *f = quartzC_toFunctionAndFree(&c, src, globals);
 	if(f == NULL) {
 		quartzC_freeFailingCompiler(c);

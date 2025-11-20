@@ -35,6 +35,7 @@ typedef struct quartz_Node {
 	struct quartz_Node **children;
 	size_t childCount;
 	size_t childCap;
+	struct quartz_Node *next;
 } quartz_Node;
 
 typedef enum quartz_ParserError {
@@ -57,6 +58,7 @@ typedef enum quartz_ParserError {
 
 typedef struct quartz_Parser {
 	quartz_Thread *Q;
+	quartz_Node *allNodes;
 	const char *s;
 	size_t off;
 	size_t curline;
@@ -77,16 +79,12 @@ typedef enum quartz_ParserBlockFlags {
 	QUARTZ_PBLOCK_LOOP = 1<<1,
 } quartz_ParserBlockFlags;
 
-quartz_Node *quartzI_allocAST(quartz_Thread *Q, quartz_NodeType type, unsigned int line, const char *str, size_t strlen);
-void quartzI_freeAST(quartz_Thread *Q, quartz_Node *node);
+quartz_Node *quartzI_allocAST(quartz_Parser *p, quartz_NodeType type, unsigned int line, const char *str, size_t strlen);
 quartz_Errno quartzI_addNodeChild(quartz_Thread *Q, quartz_Node *node, quartz_Node *child);
-quartz_Errno quartzI_addNodeChildOrFree(quartz_Thread *Q, quartz_Node *node, quartz_Node *child);
 quartz_Errno quartzI_dumpAST(quartz_Buffer *buf, quartz_Node *node);
 
-// make test ast
-quartz_Node *quartzI_testAST(quartz_Thread *Q);
-
 void quartzP_initParser(quartz_Thread *Q, quartz_Parser *p, const char *s);
+void quartzP_freeParser(quartz_Parser *p);
 
 quartz_Errno quartzP_peekToken(quartz_Parser *p, quartz_Token *t);
 quartz_Errno quartzP_nextToken(quartz_Parser *p, quartz_Token *t);

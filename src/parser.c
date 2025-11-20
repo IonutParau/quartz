@@ -3,8 +3,8 @@
 #include "utils.h"
 #include "parser.h"
 
-quartz_Node *quartzI_allocAST(quartz_Thread *Q, quartz_NodeType type, unsigned int line, const char *str, size_t strlen) {
-	quartz_Node *n = quartz_alloc(Q, sizeof(*n));
+quartz_Node *quartzI_allocAST(quartz_Parser *p, quartz_NodeType type, unsigned int line, const char *str, size_t strlen) {
+	quartz_Node *n = quartz_alloc(p->Q, sizeof(*n));
 	if(n == NULL) return NULL;
 	n->type = type;
 	n->line = line;
@@ -13,13 +13,12 @@ quartz_Node *quartzI_allocAST(quartz_Thread *Q, quartz_NodeType type, unsigned i
 	n->childCount = 0;
 	n->childCap = 0;
 	n->children = NULL;
+	n->next = p->allNodes;
+	p->allNodes = n;
 	return n;
 }
 
-void quartzI_freeAST(quartz_Thread *Q, quartz_Node *node) {
-	for(size_t i = 0; i < node->childCount; i++) {
-		quartzI_freeAST(Q, node->children[i]);
-	}
+static void quartzP_freeAST(quartz_Thread *Q, quartz_Node *node) {
 	quartz_free(Q, node->children, sizeof(node->children[0]) * node->childCap);
 	quartz_free(Q, node, sizeof(*node));
 }
@@ -39,12 +38,6 @@ quartz_Errno quartzI_addNodeChild(quartz_Thread *Q, quartz_Node *node, quartz_No
 	}
 	node->children[node->childCount++] = child;
 	return QUARTZ_OK;
-}
-
-quartz_Errno quartzI_addNodeChildOrFree(quartz_Thread *Q, quartz_Node *node, quartz_Node *child) {
-	quartz_Errno err = quartzI_addNodeChild(Q, node, child);
-	if(err) quartzI_freeAST(Q, child);
-	return err;
 }
 
 static quartz_Node *quartzI_popChild(quartz_Node *node) {
@@ -83,17 +76,6 @@ fail:
 	return err;
 }
 
-quartz_Node *quartzI_testAST(quartz_Thread *Q) {
-	quartz_Node *prog = quartzI_allocAST(Q, QUARTZ_NODE_PROGRAM, 0, "", 0);
-	quartz_Node *hw = quartzI_allocAST(Q, QUARTZ_NODE_STR, 1, "\"Hello, world!\"", 15);
-	quartz_Node *print = quartzI_allocAST(Q, QUARTZ_NODE_VARIABLE, 1, "print", 5);
-	quartz_Node *call = quartzI_allocAST(Q, QUARTZ_NODE_CALL, 1, "", 0);
-	quartzI_addNodeChild(Q, call, print);
-	quartzI_addNodeChild(Q, call, hw);
-	quartzI_addNodeChild(Q, prog, call);
-	return prog;
-}
-
 void quartzP_initParser(quartz_Thread *Q, quartz_Parser *p, const char *s) {
 	p->Q = Q;
 	p->s = s;
@@ -103,7 +85,17 @@ void quartzP_initParser(quartz_Thread *Q, quartz_Parser *p, const char *s) {
 	p->curToken.len = 0;
 	p->errloc = 0;
 	p->pErr = QUARTZ_PARSE_OK;
+	p->allNodes = NULL;
 	return;
+}
+
+void quartzP_freeParser(quartz_Parser *p) {
+	quartz_Node *n = p->allNodes;
+	while(n) {
+		quartz_Node *cur = n;
+		n = n->next;
+		quartzP_freeAST(p->Q, cur);
+	}
 }
 
 static bool quartzP_mustSkipToken(quartz_Token *t) {
@@ -152,73 +144,60 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 	if(err) return err;
 
 	if(t.tt == QUARTZ_TOK_NUM) {
-		quartz_Node *node = quartzI_allocAST(p->Q, QUARTZ_NODE_NUM, l, t.s, t.len);
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_NUM, l, t.s, t.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
-		return quartzI_addNodeChildOrFree(p->Q, parent, node);
+		return quartzI_addNodeChild(p->Q, parent, node);
 	}
 
 	if(t.tt == QUARTZ_TOK_STR) {
-		quartz_Node *node = quartzI_allocAST(p->Q, QUARTZ_NODE_STR, l, t.s, t.len);
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_STR, l, t.s, t.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
-		return quartzI_addNodeChildOrFree(p->Q, parent, node);
+		return quartzI_addNodeChild(p->Q, parent, node);
 	}
 
 	if(t.tt == QUARTZ_TOK_IDENT) {
-		quartz_Node *node = quartzI_allocAST(p->Q, QUARTZ_NODE_VARIABLE, l, t.s, t.len);
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_VARIABLE, l, t.s, t.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
 
 		while(1) {
 			l = p->curline;
 			err = quartzP_peekToken(p, &t);
-			if(err) {
-				quartzI_freeAST(p->Q, node);
-				return err;
-			}
+			if(err) return err;
 
 			if(t.s[0] == '.') {
 				err = quartzP_nextToken(p, &t);
-				if(err) {
-					quartzI_freeAST(p->Q, node);
-					return err;
-				}
+				if(err) return err;
 				
 				err = quartzP_nextToken(p, &t);
-				if(err) {
-					quartzI_freeAST(p->Q, node);
-					return err;
-				}
+				if(err) return err;
 
 				if(t.tt != QUARTZ_TOK_IDENT) {
-					quartzI_freeAST(p->Q, node);
 					p->pErr = QUARTZ_PARSE_EBADTOK;
 					p->tokExpected = "<identifier>";
 					p->errloc = l;
 					return QUARTZ_ESYNTAX;
 				}
 
-				quartz_Node *field = quartzI_allocAST(p->Q, QUARTZ_NODE_FIELD, l, t.s, t.len);
+				quartz_Node *field = quartzI_allocAST(p, QUARTZ_NODE_FIELD, l, t.s, t.len);
 				if(field == NULL) {
-					quartzI_freeAST(p->Q, node);
 					return QUARTZ_ENOMEM;
 				}
-				err = quartzI_addNodeChildOrFree(p->Q, field, node);
+				err = quartzI_addNodeChild(p->Q, field, node);
 				if(err) return err;
 				node = field;
 				continue;
 			} else if (t.s[0] == '[') {
 				err = quartzP_nextToken(p, &t);
 				if(err) {
-					quartzI_freeAST(p->Q, node);
 					return err;
 				}
 
-				quartz_Node *index = quartzI_allocAST(p->Q, QUARTZ_NODE_INDEX, l, t.s, t.len);
-				err = quartzI_addNodeChildOrFree(p->Q, index, node);
+				quartz_Node *index = quartzI_allocAST(p, QUARTZ_NODE_INDEX, l, t.s, t.len);
+				err = quartzI_addNodeChild(p->Q, index, node);
 				if(err) return err;
 				
 				err = quartzP_parseExpression(p, index);
 				if(err) {
-					quartzI_freeAST(p->Q, index);
 					return err;
 				}
 				
@@ -226,43 +205,37 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 				
 				err = quartzP_nextToken(p, &t);
 				if(err) {
-					quartzI_freeAST(p->Q, node);
 					return err;
 				}
 
 				if(t.s[0] != ']') {
 					p->pErr = QUARTZ_PARSE_EBADTOK;
 					p->tokExpected = "]";
-					quartzI_freeAST(p->Q, node);
 					return QUARTZ_ESYNTAX;
 				}
 				continue;
 			} else if (t.s[0] == '(') {
 				err = quartzP_nextToken(p, &t);
 				if(err) {
-					quartzI_freeAST(p->Q, node);
 					return err;
 				}
 
-				quartz_Node *call = quartzI_allocAST(p->Q, QUARTZ_NODE_CALL, l, "", 0);
+				quartz_Node *call = quartzI_allocAST(p, QUARTZ_NODE_CALL, l, "", 0);
 				if(call == NULL) {
-					quartzI_freeAST(p->Q, node);
 					return QUARTZ_ENOMEM;
 				}
-				err = quartzI_addNodeChildOrFree(p->Q, call, node);
+				err = quartzI_addNodeChild(p->Q, call, node);
 				if(err) return err;
 
 				while(1) {
 					l = p->curline;
 					err = quartzP_peekToken(p, &t);
 					if(err) {
-						quartzI_freeAST(p->Q, call);
 						return err;
 					}
 					if(t.s[0] == ')') {
 						err = quartzP_nextToken(p, &t);
 						if(err) {
-							quartzI_freeAST(p->Q, call);
 							return err;
 						}
 						break;
@@ -270,13 +243,11 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 
 					err = quartzP_parseExpression(p, call);
 					if(err) {
-						quartzI_freeAST(p->Q, call);
 						return err;
 					}
 
 					err = quartzP_nextToken(p, &t);
 					if(err) {
-						quartzI_freeAST(p->Q, call);
 						return err;
 					}
 
@@ -284,7 +255,6 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 					if(t.s[0] == ',') continue;
 					p->pErr = QUARTZ_PARSE_EBADTOK;
 					p->tokExpected = ",";
-					quartzI_freeAST(p->Q, call);
 					return QUARTZ_ESYNTAX;
 				}
 
@@ -295,24 +265,22 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 		}
 
 	ident_done:
-		return quartzI_addNodeChildOrFree(p->Q, parent, node);
+		return quartzI_addNodeChild(p->Q, parent, node);
 	}
 	
 	if(t.s[0] == '[') {
-		quartz_Node *n = quartzI_allocAST(p->Q, QUARTZ_NODE_LIST, p->curline, "", 0);
+		quartz_Node *n = quartzI_allocAST(p, QUARTZ_NODE_LIST, p->curline, "", 0);
 		if(n == NULL) return quartz_oom(p->Q);
 
 		while(1) {
 			l = p->curline;
 			err = quartzP_peekToken(p, &t);
 			if(err) {
-				quartzI_freeAST(p->Q, n);
 				return err;
 			}
 			if(t.s[0] == ']') {
 				err = quartzP_nextToken(p, &t);
 				if(err) {
-					quartzI_freeAST(p->Q, n);
 					return err;
 				}
 				break;
@@ -320,13 +288,11 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 
 			err = quartzP_parseExpression(p, n);
 			if(err) {
-				quartzI_freeAST(p->Q, n);
 				return err;
 			}
 
 			err = quartzP_nextToken(p, &t);
 			if(err) {
-				quartzI_freeAST(p->Q, n);
 				return err;
 			}
 
@@ -334,11 +300,10 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 			if(t.s[0] == ',') continue;
 			p->pErr = QUARTZ_PARSE_EBADTOK;
 			p->tokExpected = ",";
-			quartzI_freeAST(p->Q, n);
 			return QUARTZ_ESYNTAX;
 		}
 
-		return quartzI_addNodeChildOrFree(p->Q, parent, n);
+		return quartzI_addNodeChild(p->Q, parent, n);
 	}
 	
 	if(t.s[0] == '(') {
@@ -409,21 +374,20 @@ quartz_Errno quartzP_parseExpressionPratt(quartz_Parser *p, quartz_Node *parent,
 		err = quartzP_parseExpressionPratt(p, parent, right);
 		if(err) return err;
 
-		quartz_Node *opNode = quartzI_allocAST(p->Q, QUARTZ_NODE_OP, l, t.s, t.len);
+		quartz_Node *opNode = quartzI_allocAST(p, QUARTZ_NODE_OP, l, t.s, t.len);
 		if(opNode == NULL) return QUARTZ_ENOMEM;
 	
 		quartz_Node *rightNode = quartzI_popChild(parent);
 		quartz_Node *leftNode = quartzI_popChild(parent);
 
-		err = quartzI_addNodeChildOrFree(p->Q, opNode, leftNode);
+		err = quartzI_addNodeChild(p->Q, opNode, leftNode);
 		if(err) {
-			quartzI_freeAST(p->Q, rightNode);
 			return err;
 		}
-		err = quartzI_addNodeChildOrFree(p->Q, opNode, rightNode);
+		err = quartzI_addNodeChild(p->Q, opNode, rightNode);
 		if(err) return err;
 
-		err = quartzI_addNodeChildOrFree(p->Q, parent, opNode);
+		err = quartzI_addNodeChild(p->Q, parent, opNode);
 		if(err) return err;
 	}
 	return QUARTZ_OK;
@@ -457,13 +421,12 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 			return QUARTZ_ESYNTAX;
 		}
 
-		quartz_Node *node = quartzI_allocAST(p->Q, QUARTZ_NODE_LOCAL, l, name.s, name.len);
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_LOCAL, l, name.s, name.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
 
 		// added early just to let it be freed after errors
 		err = quartzI_addNodeChild(p->Q, parent, node);
 		if(err) {
-			quartzI_freeAST(p->Q, node);
 			return err;
 		}
 
