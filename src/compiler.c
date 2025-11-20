@@ -303,8 +303,41 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 	}
 
 	if(node->type == QUARTZ_NODE_NUM) {
-		// this DOES NOT WORK FOR FLOATS but we DO NOT CARE RIGHT NOW
-		// TODO: make it actually check what type of number it is
+		quartz_Type t = quartzI_numType(node->str, node->strlen);
+		if(t == QUARTZ_TREAL) {
+			quartz_Real r = quartzI_atof(node->str, node->strlen);
+			quartz_Int n = quartzC_findConstant(c, node->str, node->strlen);
+			if(n < 0) {
+				n = quartzC_countConstants(c);
+				err = quartzC_addConstant(c, node->str, node->strlen, (quartz_Value) {
+					.type = QUARTZ_VNUM,
+					.real = r,
+				});
+				if(err) return err;
+			}
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHCONST,
+				.uD = n,
+				.line = node->line,
+			});
+		}
+		if(t == QUARTZ_TCOMPLEX) {
+			quartz_Complex r = quartzI_atoc(node->str, node->strlen);
+			quartz_Int n = quartzC_findConstant(c, node->str, node->strlen);
+			if(n < 0) {
+				n = quartzC_countConstants(c);
+				err = quartzC_addConstant(c, node->str, node->strlen, (quartz_Value) {
+					.type = QUARTZ_VCOMPLEX,
+					.complex = r,
+				});
+				if(err) return err;
+			}
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHCONST,
+				.uD = n,
+				.line = node->line,
+			});
+		}
 		quartz_Int i = quartzI_atoi(node->str, node->strlen);
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_PUSHINT,

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <math.h>
 
 size_t quartzI_strlen(const char *s) {
 	size_t l = 0;
@@ -68,6 +69,248 @@ void quartzI_trueStringWrite(char *buf, const char *literal, size_t len) {
 			i++;
 		}
 	}
+}
+
+quartz_Type quartzI_numType(const char *literal, size_t len) {
+	// TODO: handle in here and in atoc the + case for complex numbers
+	quartz_Type t = QUARTZ_TNULL;
+	size_t i = 0;
+	int base = 10;
+	if(len >= 2) {
+		if(literal[0] == '0') {
+			if(literal[1] == 'x') {
+				i = 2;
+				base = 16;
+			} else if(literal[1] == 'b') {
+				i = 2;
+				base = 2;
+			} else if(literal[1] == 'o') {
+				i = 2;
+				base = 8;
+			}
+		}
+	}
+	while(i < len) {
+		char c = literal[i];
+		if(quartzI_isbase(c, base)) {
+			t = QUARTZ_TINT;
+			i++;
+			continue;
+		}
+		if(c == '.') break;
+		if(c == 'e') break;
+		if(c == 'i') break;
+		return QUARTZ_TINT;
+	}
+	if(i < len && literal[i] == '.') {
+		t = QUARTZ_TREAL;
+		i++;
+		while(i < len) {
+			char c = literal[i];
+			if(quartzI_isbase(c, base)) {
+				i++;
+				continue;
+			}
+			if(c == 'e') break;
+			if(c == 'i') break;
+			return QUARTZ_TNULL;
+		}
+	}
+	if(i < len && literal[i] == 'e') {
+		t = QUARTZ_TREAL;
+		i++;
+		if(i < len) {
+			if(literal[i] == '+') i++;
+			else if(literal[i] == '-') i++;
+		}
+		while(i < len) {
+			char c = literal[i];
+			if(quartzI_isbase(c, base)) {
+				i++;
+				continue;
+			}
+			if(c == 'i') break;
+			return QUARTZ_TNULL;
+		}
+	}
+	if(i < len && literal[i] == 'i') {
+		t = QUARTZ_TCOMPLEX;
+		i++;
+	}
+	if(i < len) return QUARTZ_TNULL; // how is there still shi???
+	return t;
+}
+
+quartz_Int quartzI_atoi(const char *s, size_t len) {
+	quartz_Int n = 0;
+	size_t i = 0;
+	int base = 10;
+	if(len >= 2 && s[0] == '0') {
+		if(s[1] == 'x') {
+			i = 2;
+			base = 16;
+		}
+		if(s[1] == 'o') {
+			i = 2;
+			base = 8;
+		}
+		if(s[1] == 'b') {
+			i = 2;
+			base = 2;
+		}
+	}
+
+	while(i < len) {
+		n *= base;
+		n += quartzI_getdigit(s[i]);
+		i++;
+	}
+	return n;
+}
+
+quartz_Real quartzI_atof(const char *s, size_t len) {
+	quartz_Real n = 0;
+	size_t i = 0;
+	int base = 10;
+	if(len >= 2 && s[0] == '0') {
+		if(s[1] == 'x') {
+			i = 2;
+			base = 16;
+		}
+		if(s[1] == 'o') {
+			i = 2;
+			base = 8;
+		}
+		if(s[1] == 'b') {
+			i = 2;
+			base = 2;
+		}
+	}
+	while(i < len) {
+		char c = s[i];
+		if(quartzI_isbase(c, base)) {
+			n *= 10;
+			n += quartzI_getdigit(c);
+			i++;
+			continue;
+		}
+		break;
+	}
+	if(i < len && s[i] == '.') {
+		i++;
+		quartz_Real m = 1;
+		while(i < len) {
+			char c = s[i];
+			if(quartzI_isbase(c, base)) {
+				m /= base;
+				n += m * quartzI_getdigit(c);
+				i++;
+				continue;
+			}
+			break;
+		}
+	}
+	if(i < len && s[i] == 'e') {
+		i++;
+		quartz_Real m = 0;
+		bool negative = false;
+		if(i < len) {
+			if(s[i] == '+') {
+				i++;
+			} else if(s[i] == '-') {
+				i++;
+				negative = true;
+			}
+		}
+		while(i < len) {
+			char c = s[i];
+			if(quartzI_isbase(c, base)) {
+				m *= base;
+				m += quartzI_getdigit(c);
+				i++;
+				continue;
+			}
+			break;
+		}
+		quartz_Real x = pow(base, m);
+		if(negative) n /= x;
+		else n *= x;
+	}
+	return n;
+}
+
+quartz_Complex quartzI_atoc(const char *s, size_t len) {
+	quartz_Real n = 0;
+	size_t i = 0;
+	int base = 10;
+	if(len >= 2 && s[0] == '0') {
+		if(s[1] == 'x') {
+			i = 2;
+			base = 16;
+		}
+		if(s[1] == 'o') {
+			i = 2;
+			base = 8;
+		}
+		if(s[1] == 'b') {
+			i = 2;
+			base = 2;
+		}
+	}
+	while(i < len) {
+		char c = s[i];
+		if(quartzI_isbase(c, base)) {
+			n *= 10;
+			n += quartzI_getdigit(c);
+			i++;
+			continue;
+		}
+		break;
+	}
+	if(i < len && s[i] == '.') {
+		i++;
+		quartz_Real m = 1;
+		while(i < len) {
+			char c = s[i];
+			if(quartzI_isbase(c, base)) {
+				m /= base;
+				n += m * quartzI_getdigit(c);
+				i++;
+				continue;
+			}
+			break;
+		}
+	}
+	if(i < len && s[i] == 'e') {
+		i++;
+		quartz_Real m = 0;
+		bool negative = false;
+		if(i < len) {
+			if(s[i] == '+') {
+				i++;
+			} else if(s[i] == '-') {
+				i++;
+				negative = true;
+			}
+		}
+		while(i < len) {
+			char c = s[i];
+			if(quartzI_isbase(c, base)) {
+				m *= base;
+				m += quartzI_getdigit(c);
+				i++;
+				continue;
+			}
+			break;
+		}
+		quartz_Real x = pow(base, m);
+		if(negative) n /= x;
+		else n *= x;
+	}
+	if(i < len && s[i] == 'i') {
+		return (quartz_Complex) {0, n};
+	}
+	return (quartz_Complex) {n, 0};
 }
 
 char *quartz_strdup(quartz_Thread *Q, const char *s) {
@@ -141,33 +384,6 @@ int quartzI_getdigit(char c) {
 		}
 	}
 	return c - '0';
-}
-
-quartz_Int quartzI_atoi(const char *s, size_t len) {
-	quartz_Int n = 0;
-	size_t i = 0;
-	int base = 10;
-	if(len >= 2 && s[0] == '0') {
-		if(s[1] == 'x') {
-			i = 2;
-			base = 16;
-		}
-		if(s[1] == 'o') {
-			i = 2;
-			base = 8;
-		}
-		if(s[1] == 'b') {
-			i = 2;
-			base = 2;
-		}
-	}
-
-	while(i < len) {
-		n *= base;
-		n += quartzI_getdigit(s[i]);
-		i++;
-	}
-	return n;
 }
 
 // s should be after the %

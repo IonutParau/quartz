@@ -255,6 +255,9 @@ quartz_Errno quartz_bufputn(quartz_Buffer *buf, quartz_Int n);
 quartz_Errno quartz_bufputnx(quartz_Buffer *buf, quartz_Int n, size_t base, size_t minDigits, bool zeroed);
 quartz_Errno quartz_bufputu(quartz_Buffer *buf, quartz_Uint n);
 quartz_Errno quartz_bufputux(quartz_Buffer *buf, quartz_Uint n, size_t base, size_t minDigits, bool zeroed);
+quartz_Errno quartz_bufputr(quartz_Buffer *buf, quartz_Real x);
+quartz_Errno quartz_bufputrx(quartz_Buffer *buf, quartz_Real x, size_t base, size_t intDigits, size_t fracDigits, bool intZeroed, bool fracZeroed);
+quartz_Errno quartz_bufputC(quartz_Buffer *buf, quartz_Complex x);
 
 // uses a non-standard format specifier syntax, which matches the one used
 // by the Quartz language.

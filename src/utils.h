@@ -22,6 +22,12 @@ bool quartzI_strleqlc(const char *a, size_t alen, const char *b);
 size_t quartzI_trueStringLen(const char *literal, size_t len);
 void quartzI_trueStringWrite(char *buf, const char *literal, size_t len);
 
+// null for error, a numeric type for valid ones.
+quartz_Type quartzI_numType(const char *literal, size_t len);
+quartz_Int quartzI_atoi(const char *literal, size_t len);
+quartz_Real quartzI_atof(const char *literal, size_t len);
+quartz_Complex quartzI_atoc(const char *literal, size_t len);
+
 bool quartzI_iswhitespace(char c);
 bool quartzI_isalpha(char c);
 bool quartzI_isnum(char c);
@@ -39,9 +45,6 @@ bool quartzI_islower(char c);
 
 // infers base
 int quartzI_getdigit(char c);
-
-// assumes valid string
-quartz_Int quartzI_atoi(const char *s, size_t len);
 
 // s should be after the %
 void quartzI_parseFormatter(const char *s, quartz_FormatData *d);

@@ -1,6 +1,7 @@
 #include "quartz.h"
 #include "utils.h"
 #include <stdarg.h>
+#include <math.h>
 
 quartz_Errno quartz_bufinit(quartz_Thread *Q, quartz_Buffer *buf, size_t cap) {
 	buf->Q = Q;
@@ -125,6 +126,92 @@ quartz_Errno quartz_bufputux(quartz_Buffer *buf, quartz_Uint n, size_t base, siz
 	return quartz_bufputls(buf, digits, digitlen);
 }
 
+quartz_Errno quartz_bufputr(quartz_Buffer *buf, quartz_Real x) {
+	return quartz_bufputrx(buf, x, 10, 0, 6, false, false);
+}
+
+quartz_Errno quartz_bufputrx(quartz_Buffer *buf, quartz_Real x, size_t base, size_t intDigits, size_t fracDigits, bool intZeroed, bool fracZeroed) {
+	quartz_Errno err;
+	if(x < 0) {
+		err = quartz_bufputc(buf, '+');
+		if(err) return err;
+		x = -x;
+	}
+	const char *a = "0123456789abcdef";
+	
+	char digitBuf[512];
+	size_t digitLen = 0;
+
+	{
+		quartz_Real y = x;
+		while(y >= 1) {
+			int c = fmod(y, base);
+			y /= base;
+			digitBuf[digitLen++] = a[c];
+		}
+	}
+
+	if(intDigits > 0 && digitLen > intDigits) digitLen = intDigits;
+	if(digitLen == 0) {
+		digitBuf[0] = '0';
+		digitLen = 1;
+	}
+	for(size_t i = 0; i < digitLen/2; i++) {
+		size_t j = digitLen - i - 1;
+		char tmp = digitBuf[i];
+		digitBuf[i] = digitBuf[j];
+		digitBuf[j] = tmp;
+	}
+
+	err = quartz_bufputls(buf, digitBuf, digitLen);
+	if(err) return err;
+	
+	err = quartz_bufputc(buf, '.');
+	if(err) return err;
+
+	digitLen = 0;
+
+	{
+		quartz_Real y = x;
+		y = fmod(y, 1);
+		while(y > 0) {
+			y *= base;
+			int digit = fmod(y, base);
+			digitBuf[digitLen++] = a[digit];
+			y = fmod(y, 1);
+		}
+	}
+
+	if(fracDigits > 0 && digitLen > fracDigits) digitLen = fracDigits;
+	if(digitLen == 0) {
+		digitBuf[0] = '0';
+		digitLen = 1;
+	}
+
+	err = quartz_bufputls(buf, digitBuf, digitLen);
+	if(err) return err;
+
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_bufputC(quartz_Buffer *buf, quartz_Complex x) {
+	quartz_Errno err;
+
+	err = quartz_bufputr(buf, x.real);
+	if(err) return err;
+	
+	err = quartz_bufputs(buf, " + ");
+	if(err) return err;
+	
+	err = quartz_bufputr(buf, x.imaginary);
+	if(err) return err;
+	
+	err = quartz_bufputc(buf, 'i');
+	if(err) return err;
+
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartz_bufputf(quartz_Buffer *buf, const char *fmt, ...) {
 	va_list list;
 	va_start(list, fmt);
@@ -152,7 +239,6 @@ quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) 
 			if(data.max < 0) {
 				data.max = va_arg(args, quartz_Uint);
 			}
-			// %f and %C are currently not implemented :pensive:
 			if(data.d == 'p') {
 				void *p = va_arg(args, void *);
 				err = quartz_bufputp(buf, p);
@@ -213,6 +299,17 @@ quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) 
 			if(data.d == 'c') {
 				char c = va_arg(args, int);
 				err = quartz_bufputc(buf, c);
+				if(err) return err;
+			}
+			if(data.d == 'f') {
+				quartz_Real r = va_arg(args, quartz_Real);
+				// todo: formatting args
+				err = quartz_bufputr(buf, r);
+				if(err) return err;
+			}
+			if(data.d == 'C') {
+				quartz_Complex c = va_arg(args, quartz_Complex);
+				err = quartz_bufputC(buf, c);
 				if(err) return err;
 			}
 			fmt += data.len;
