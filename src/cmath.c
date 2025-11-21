@@ -86,8 +86,8 @@ void quartzCM_complexMlt(quartz_Complex *a, quartz_Complex *b) {
 	double x = a->real;
 	double y = a->imaginary;
 
-	a->real = x * b->real - y * b->real;
-	b->imaginary = x * b->imaginary - b->real * y;
+	a->real = x * b->real - y * b->imaginary;
+	a->imaginary = x * b->imaginary + b->real * y;
 }
 
 void quartzCM_complexDiv(quartz_Complex *a, quartz_Complex *b) {

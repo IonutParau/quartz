@@ -6,6 +6,7 @@
 #include "state.h"
 #include "parser.h"
 #include "compiler.h"
+#include "cmath.h"
 
 const char *quartz_version() {
 	return QUARTZ_VERSION;
@@ -442,7 +443,7 @@ quartz_Errno quartz_pushreal(quartz_Thread *Q, quartz_Real r) {
 }
 
 quartz_Errno quartz_pushcomplex(quartz_Thread *Q, quartz_Complex c) {
-	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VNUM, .complex = c});
+	return quartzI_pushRawValue(Q, (quartz_Value) {.type = QUARTZ_VCOMPLEX, .complex = c});
 }
 
 quartz_Errno quartz_pushcomplexsum(quartz_Thread *Q, quartz_Real real, quartz_Real imaginary) {
@@ -728,6 +729,11 @@ quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val) {
 	pPtr->val = v;
 	return QUARTZ_OK;
 }
+		
+quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b) {
+	// TODO: implement this
+	return 0;
+}
 
 quartz_Errno quartz_setglobal(quartz_Thread *Q, const char *global, int x) {
 	// TODO: use more optimized mapSet for strings
@@ -912,19 +918,210 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 		quartzI_memcpy(c + alen, b, blen);
 		return QUARTZ_OK;
 	}
-	if(atype == QUARTZ_TINT) {
-		quartz_Int a = quartz_tointeger(Q, -2, &err);
+	// comparison!!!!
+	if(op == QUARTZ_BINOP_EQL) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
 		if(err) return err;
-		if(op == QUARTZ_BINOP_ADD) {
+		return quartz_pushbool(Q, (cmp & QUARTZ_CMP_EQUAL) != 0);
+	}
+	if(op == QUARTZ_BINOP_NEQL) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushbool(Q, (cmp & QUARTZ_CMP_EQUAL) == 0);
+	}
+	if(op == QUARTZ_BINOP_LESS) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushbool(Q, (cmp & QUARTZ_CMP_LESS) != 0);
+	}
+	if(op == QUARTZ_BINOP_GREATER) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushbool(Q, (cmp & QUARTZ_CMP_GREATER) != 0);
+	}
+	if(op == QUARTZ_BINOP_LESSEQL) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushbool(Q, (cmp & (QUARTZ_CMP_LESS | QUARTZ_CMP_EQUAL)) != 0);
+	}
+	if(op == QUARTZ_BINOP_GREATEREQL) {
+		int cmp = quartz_compare(Q, -2, -1);
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushbool(Q, (cmp & (QUARTZ_CMP_GREATER | QUARTZ_CMP_EQUAL)) != 0);
+	}
+	// this code is a nightmare
+	if(op == QUARTZ_BINOP_ADD) {
+		if(atype == QUARTZ_TINT) {
+			quartz_Int a = quartz_tointeger(Q, -2, &err);
+			if(err) return err;
 			if(btype == QUARTZ_TINT) {
 				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
 				err = quartz_popn(Q, 2);
 				if(err) return err;
 				return quartz_pushint(Q, a + b);
 			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a + b);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				b.real += a;
+				return quartz_pushcomplex(Q, b);
+			}
 		}
+		if(atype == QUARTZ_TREAL) {
+			quartz_Real a = quartz_toreal(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a + b);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a + b);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				b.real += a;
+				return quartz_pushcomplex(Q, b);
+			}
+		}
+		if(atype == QUARTZ_TCOMPLEX) {
+			quartz_Complex a = quartz_tocomplex(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				a.real += b;
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				a.real += b;
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexAdd(&a, &b);
+				return quartz_pushcomplex(Q, a);
+			}
+		}
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid + operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
 	}
-
+	if(op == QUARTZ_BINOP_MLT) {
+		if(atype == QUARTZ_TINT) {
+			quartz_Int a = quartz_tointeger(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushint(Q, a * b);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a * b);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexMltReal(&b, a);
+				return quartz_pushcomplex(Q, b);
+			}
+		}
+		if(atype == QUARTZ_TREAL) {
+			quartz_Real a = quartz_toreal(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a * b);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				return quartz_pushreal(Q, a * b);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexMltReal(&b, a);
+				return quartz_pushcomplex(Q, b);
+			}
+		}
+		if(atype == QUARTZ_TCOMPLEX) {
+			quartz_Complex a = quartz_tocomplex(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexMltReal(&a, b);
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexMltReal(&a, b);
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				quartzCM_complexMlt(&a, &b);
+				return quartz_pushcomplex(Q, a);
+			}
+		}
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid + operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
+	}
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid operator for type %s", quartz_typenames[atype]);
 }
 

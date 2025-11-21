@@ -181,7 +181,7 @@ quartz_Errno quartz_bufputrx(quartz_Buffer *buf, quartz_Real x, size_t base, siz
 			y = fmod(y, 1);
 		}
 	}
-
+	
 	if(fracDigits > 0 && digitLen > fracDigits) digitLen = fracDigits;
 	if(digitLen == 0) {
 		digitBuf[0] = '0';
