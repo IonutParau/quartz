@@ -119,7 +119,7 @@ quartz_TokenError quartzI_lexAt(const char *fullS, size_t off, quartz_Token *t) 
 	for(size_t i = 0; quartzI_lexSymbols[i] != NULL; i++) {
 		const char *sym = quartzI_lexSymbols[i];
 		size_t symlen = quartzI_strlen(sym);
-		if(quartzI_strleqlc(sym, symlen, s)) {
+		if(quartzI_strleql(sym, symlen, s, symlen)) {
 			t->len = symlen;
 			t->tt = QUARTZ_TOK_SYMBOL;
 			return QUARTZ_TOK_OK;

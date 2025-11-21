@@ -358,6 +358,27 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		});
 		return QUARTZ_OK;
 	}
+
+	if(node->type == QUARTZ_NODE_KEYWORDCONST) {
+		const char *s = node->str;
+		size_t l = node->strlen;
+
+		if(quartzI_strleql(s, l, "null", 4)) {
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHNULL,
+				.line = node->line,
+			});
+		}
+		if(quartzI_strleql(s, l, "true", 4) || quartzI_strleql(s, l, "false", 5)) {
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHBOOL,
+				.uD = quartzI_strleql(s, l, "true", 4) ? 1 : 0,
+				.line = node->line,
+			});
+		}
+
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "what the bloody fuck is happening here");
+	}
 	
 	if(node->type == QUARTZ_NODE_LIST) {
 		err = quartzC_pushChildArray(c, node);
@@ -412,8 +433,16 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 	}
 
 	if(node->type == QUARTZ_NODE_LOCAL) {
-		err = quartzC_pushValue(c, node->children[0]);
-		if(err) return err;
+		if(node->childCount != 0) {
+			err = quartzC_pushValue(c, node->children[0]);
+			if(err) return err;
+		} else {
+			err = quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHNULL,
+				.line = node->line,
+			});
+			if(err) return err;
+		}
 		quartz_Local *l = quartz_alloc(Q, sizeof(quartz_Local));
 		if(l == NULL) return quartz_oom(Q);
 		l->str = node->str;

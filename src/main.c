@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
 		printf("ERROR!\n");
 		quartz_pusherror(Q);
 		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
+		quartz_destroyThread(Q);
 		return 1;
 	}
 

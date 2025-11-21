@@ -155,6 +155,18 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 		return quartzI_addNodeChild(p->Q, parent, node);
 	}
 
+	if(t.tt == QUARTZ_TOK_KEYWORD) {
+		const char *arr[] = {"null", "true", "false"};
+		size_t arrlen = sizeof(arr) / sizeof(arr[0]);
+		for(size_t i = 0; i < arrlen; i++) {
+			if(quartzI_strleqlc(t.s, t.len, arr[i])) {
+				quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_KEYWORDCONST, l, t.s, t.len);
+				if(node == NULL) return QUARTZ_ENOMEM;
+				return quartzI_addNodeChild(p->Q, parent, node);
+			}
+		}
+	}
+
 	if(t.tt == QUARTZ_TOK_IDENT) {
 		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_VARIABLE, l, t.s, t.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
@@ -413,6 +425,7 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 
 		quartz_Token name;
 		err = quartzP_nextToken(p, &name);
+		if(err) return err;
 
 		if(name.tt != QUARTZ_TOK_IDENT) {
 			p->pErr = QUARTZ_PARSE_EBADTOK;
@@ -424,11 +437,8 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_LOCAL, l, name.s, name.len);
 		if(node == NULL) return QUARTZ_ENOMEM;
 
-		// added early just to let it be freed after errors
 		err = quartzI_addNodeChild(p->Q, parent, node);
-		if(err) {
-			return err;
-		}
+		if(err) return err;
 
 		err = quartzP_peekToken(p, &t);
 		if(err) return err;

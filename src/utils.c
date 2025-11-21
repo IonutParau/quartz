@@ -24,14 +24,15 @@ void quartzI_memset(void *dest, unsigned char x, size_t len) {
 
 bool quartzI_strleql(const char *a, size_t alen, const char *b, size_t blen) {
 	if(alen != blen) return false;
-	return quartzI_strleqlc(a, alen, b);
+	for(size_t i = 0; i < alen; i++) if(a[i] != b[i]) return false;
+	return true;
 }
 
 bool quartzI_strleqlc(const char *a, size_t alen, const char *b) {
 	for(size_t i = 0; i < alen; i++) {
 		if(a[i] != b[i]) return false;
 	}
-	return true;
+	return b[alen] == '\0';
 }
 
 size_t quartzI_trueStringLen(const char *literal, size_t len) {

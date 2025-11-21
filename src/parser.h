@@ -23,6 +23,8 @@ typedef enum quartz_NodeType {
 	QUARTZ_NODE_OP,
 	// list of stuff
 	QUARTZ_NODE_LIST,
+	// null, true or false
+	QUARTZ_NODE_KEYWORDCONST,
 } quartz_NodeType;
 
 typedef struct quartz_Node {

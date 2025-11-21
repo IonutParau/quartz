@@ -15,6 +15,8 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_VARARGPREP, // handles ..., the intended arg count is in uD.
 	QUARTZ_OP_EXECOP, // B is 2 for binops and C is the BinOp.
 	QUARTZ_OP_LIST, // length is uD
+	QUARTZ_OP_PUSHNULL, // push null
+	QUARTZ_OP_PUSHBOOL, // pushes boolean that checks if uD != 0, the instruction was suggested by Blendi after observing a supreme lack of QUARTZ_OP_PUSHBOOL
 } quartz_OpCode;
 
 #endif
