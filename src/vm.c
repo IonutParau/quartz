@@ -5,9 +5,6 @@
 #include "gc.h"
 
 quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry) {
-	if(Q->callLen == QUARTZ_MAX_CALL) {
-		return quartz_erroras(Q, QUARTZ_ESTACK);
-	}
 	if(Q->callLen == Q->callCap ) {
 		size_t newCap = Q->callCap * 2;
 		quartz_CallEntry *newStack = quartz_realloc(Q, Q->call, sizeof(*newStack) * Q->callCap, sizeof(*newStack) * newCap);
@@ -173,6 +170,41 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 		} else if(pc->op == QUARTZ_OP_PUSHBOOL) {
 			err = quartz_pushbool(Q, pc->uD != 0);
 			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_JMP) {
+			pc += pc->sD;
+			continue;
+		} else if(pc->op == QUARTZ_OP_DUP) {
+			err = quartz_dupn(Q, pc->uD + 1);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_POP) {
+			err = quartz_popn(Q, pc->uD + 1); // whats popn gng ??????
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_CJMP) {
+			if(quartz_truthy(Q, -1)) {
+				pc += pc->sD;
+				continue;
+			}
+		} else if(pc->op == QUARTZ_OP_CNJMP) {
+			if(!quartz_truthy(Q, -1)) {
+				pc += pc->sD;
+				continue;
+			}
+		} else if(pc->op == QUARTZ_OP_PCJMP) {
+			bool b = quartz_truthy(Q, -1);
+			err = quartz_pop(Q);
+			if(err) return err;
+			if(b) {
+				pc += pc->sD;
+				continue;
+			}
+		} else if(pc->op == QUARTZ_OP_PCNJMP) {
+			bool b = quartz_truthy(Q, -1);
+			err = quartz_pop(Q);
+			if(err) return err;
+			if(!b) {
+				pc += pc->sD;
+				continue;
+			}
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;

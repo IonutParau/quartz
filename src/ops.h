@@ -17,6 +17,14 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_LIST, // length is uD
 	QUARTZ_OP_PUSHNULL, // push null
 	QUARTZ_OP_PUSHBOOL, // pushes boolean that checks if uD != 0, the instruction was suggested by Blendi after observing a supreme lack of QUARTZ_OP_PUSHBOOL
+	QUARTZ_OP_JMP, // IP += sD
+	QUARTZ_OP_DUP, // dup(uD + 1)
+	QUARTZ_OP_POP, // pop(uD + 1)
+	// we do not pop, because we can abuse these to save some cycles for and and or statements
+	QUARTZ_OP_CJMP, // if(stack[-1]) IP += sD
+	QUARTZ_OP_CNJMP, // if(!stack[-1]) IP += sD
+	QUARTZ_OP_PCJMP, // if(pop()) IP += sD
+	QUARTZ_OP_PCNJMP, // if(!pop()) IP += sD
 } quartz_OpCode;
 
 #endif

@@ -453,6 +453,32 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		return QUARTZ_OK;
 	}
 
+	if(node->type == QUARTZ_NODE_BLOCK) {
+		// TODO: make locals be forgotten and dropped and shi
+		return quartzC_pushChildArray(c, node);
+	}
+
+	if(node->type == QUARTZ_NODE_IF) {
+		// welcome to the land of abuse
+		err = quartzC_pushValue(c, node->children[0]);
+		if(err) return err;
+		size_t branchA = c->codesize;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {.line = node->line});
+		if(err) return err;
+		if(node->childCount == 2) {
+			// no else, micro-optimized
+			err = quartzC_runStatement(c, node->children[1]);
+			if(err) return err;
+			size_t endOfBody = c->codesize;
+			c->code[branchA].op = QUARTZ_OP_PCNJMP;
+			c->code[branchA].sD = endOfBody - branchA;
+			return QUARTZ_OK;
+		} else {
+
+		}
+		return QUARTZ_OK;
+	}
+
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad statement node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }
 

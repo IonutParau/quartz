@@ -340,6 +340,15 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 }
 
 static bool quartzP_binOpBp(const char *s, size_t len, size_t *left, size_t *right) {
+	const char *comp[] = {"==", "!=", ">=", "<=", ">", "<"};
+	size_t complen = sizeof(comp) / sizeof(comp[0]);
+	for(size_t i = 0; i < complen; i++) {
+		if(quartzI_strleqlc(s, len, comp[i])) {
+			*left = 101;
+			*right = 102;
+			return true;
+		}
+	}
 	if(s[0] == '^' || s[0] == '&' || s[0] == '|') {
 		*left = 201;
 		*right = 202;
@@ -462,6 +471,39 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		p->pErr = QUARTZ_PARSE_ESTMT;
 		p->errloc = l;
 		return QUARTZ_ESYNTAX;
+	}
+
+	if(quartzI_strleqlc(t.s, t.len, "if")) {
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		// TODO: evaluate if ifs should always be if(cond) {} and never if cond {}
+		// smth smth parsing structs vs blocks
+
+		// this is an abomination against our lord and savior
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_IF, p->curline, "", 0);
+		if(node == NULL) return QUARTZ_ENOMEM;
+
+		err = quartzP_parseExpression(p, node);
+		if(err) return err;
+
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+		
+		if(t.s[0] != '{') {
+			p->pErr = QUARTZ_PARSE_EBADTOK;
+			p->tokExpected = "{";
+			return QUARTZ_ESYNTAX;
+		}
+
+		quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
+		err = quartzI_addNodeChild(p->Q, node, block);
+		if(err) return err;
+
+		err = quartzP_parseStatementBlock(p, block, 0);
+		if(err) return err;
+
+		return quartzI_addNodeChild(p->Q, parent, node);
 	}
 
 	p->pErr = QUARTZ_PARSE_ESTMT;

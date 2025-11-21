@@ -731,8 +731,9 @@ quartz_Errno quartz_storePtr(quartz_Thread *Q, int ptr, int val) {
 }
 		
 quartz_CmpFlags quartz_compare(quartz_Thread *Q, int a, int b) {
-	// TODO: implement this
-	return 0;
+	quartz_Value x = quartzI_getStackValue(Q, a);
+	quartz_Value y = quartzI_getStackValue(Q, b);
+	return quartzI_compare(x, y);
 }
 
 quartz_Errno quartz_setglobal(quartz_Thread *Q, const char *global, int x) {
