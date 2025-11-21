@@ -1132,7 +1132,7 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				err = quartz_popn(Q, 2);
 				if(err) return err;
 				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
-				return quartz_pushint(Q, a / b);
+				return quartz_pushreal(Q, (quartz_Real)a / b);
 			}
 			if(btype == QUARTZ_TREAL) {
 				quartz_Real b = quartz_toreal(Q, -1, &err);
