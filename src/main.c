@@ -27,27 +27,34 @@ static void printVersionAndCopyright() {
 
 static quartz_Errno repl(quartz_Thread *Q) {
 	quartz_Errno err;
-	char *line = NULL;
-	size_t linebuflen = 0;
 	const char *src = "(stdin)";
 	size_t srclen = strlen(src);
-	while(true) {
+	quartz_Buffer linebuf;
+	err = quartz_bufinit(Q, &linebuf, 128);
+	if(err) return err;
+	while(!feof(stdin)) {
+		quartz_bufreset(&linebuf);
 		fputs("> ", stdout);
 		fflush(stdout);
-		ssize_t linelen = getline(&line, &linebuflen, stdin);
-		if(linelen < 0) {
-			free(line);
-			fputs("\n", stdout);
-			return QUARTZ_OK; // trust
+		while(true) {
+			int c = fgetc(stdin);
+			if(c == EOF || c == '\n' || c == '\4') {
+				break;
+			}
+			err = quartz_bufputc(&linebuf, c);
+			if(err) return err;
 		}
-		err = quartz_pushlscript(Q, line, linelen, src, srclen);
-		if(err) return err;
-		err = quartz_pushlstring(Q, src, srclen);
-		if(err) return err;
-		// not protected, L
-		err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-		if(err) return err;
+		if(linebuf.len > 0) {
+			err = quartz_pushlscript(Q, linebuf.buf, linebuf.len, src, srclen);
+			if(err) return err;
+			err = quartz_pushlstring(Q, src, srclen);
+			if(err) return err;
+			// not protected, L
+			err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+			if(err) return err;
+		}
 	}
+	return QUARTZ_OK; // trust
 }
 
 static quartz_Errno execStdin(quartz_Thread *Q) {

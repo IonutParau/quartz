@@ -351,10 +351,14 @@ static bool quartzP_binOpBp(const char *s, size_t len, size_t *left, size_t *rig
 			return true;
 		}
 	}
-	if(s[0] == '^' || s[0] == '&' || s[0] == '|') {
-		*left = 201;
-		*right = 202;
-		return true;
+	const char *binop[] = {"&", "|", "^", "<<", ">>", "<<<", ">>>"};
+	size_t binoplen = sizeof(binop) / sizeof(binop[0]);
+	for(size_t i = 0; i < complen; i++) {
+		if(quartzI_strleqlc(s, len, binop[i])) {
+			*left = 201;
+			*right = 202;
+			return true;
+		}
 	}
 	if(s[0] == '+' || s[0] == '-') {
 		*left = 203;

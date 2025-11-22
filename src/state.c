@@ -1,3 +1,4 @@
+#include "platform.h"
 #include "quartz.h"
 #include "utils.h"
 #include "value.h"
@@ -7,9 +8,29 @@
 #include "parser.h"
 #include "compiler.h"
 #include "cmath.h"
+#include <math.h>
 
 const char *quartz_version() {
 	return QUARTZ_VERSION;
+}
+
+const char *quartz_platform() {
+#ifdef QUARTZ_WINDOWS
+	return "Windows";
+#endif
+#ifdef QUARTZ_IOS
+	return "iOS";
+#endif
+#ifdef QUARTZ_MACOS
+	return "MacOS";
+#endif
+#ifdef QUARTZ_ANDROID
+	return "Android";
+#endif
+#ifdef QUARTZ_LINUX
+	return "Linux";
+#endif
+	return "Embedded";
 }
 
 quartz_Thread *quartz_newThread(quartz_Context *ctx) {
@@ -1171,7 +1192,7 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				return quartz_pushcomplex(Q, a);
 			}
 		}
-		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid + operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid - operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
 	}
 	if(op == QUARTZ_BINOP_MLT) {
 		if(atype == QUARTZ_TINT) {
@@ -1254,7 +1275,7 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				return quartz_pushcomplex(Q, a);
 			}
 		}
-		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid + operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid * operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
 	}
 	if(op == QUARTZ_BINOP_DIV) {
 		if(atype == QUARTZ_TINT) {
@@ -1282,7 +1303,8 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				err = quartz_popn(Q, 2);
 				if(err) return err;
 				if(b.real == 0 && b.imaginary == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
-				quartzCM_complexDivReal(&b, a);
+				quartzCM_complexMltReal(&b, a);
+				quartzCM_complexInv(&b);
 				return quartz_pushcomplex(Q, b);
 			}
 		}
@@ -1311,7 +1333,8 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				err = quartz_popn(Q, 2);
 				if(err) return err;
 				if(b.real == 0 && b.imaginary == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
-				quartzCM_complexDivReal(&b, a);
+				quartzCM_complexMltReal(&b, a);
+				quartzCM_complexInv(&b);
 				return quartz_pushcomplex(Q, b);
 			}
 		}
@@ -1346,7 +1369,7 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 				return quartz_pushcomplex(Q, a);
 			}
 		}
-		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid + operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid / operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
 	}
 	if(op == QUARTZ_BINOP_IDIV) {
 		quartz_Int a = quartz_tointeger(Q, -2, &err);
@@ -1359,6 +1382,165 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 		err = quartz_popn(Q, 2);
 		if(err) return err;
 		return quartz_pushint(Q, a / b);
+	}
+	if(op == QUARTZ_BINOP_EXP) {
+		if(atype == QUARTZ_TINT) {
+			quartz_Int a = quartz_tointeger(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				return quartz_pushreal(Q, pow(a, b));
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				return quartz_pushreal(Q, pow(a, b));
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b.real == 0 && b.imaginary == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				quartz_Complex c = {a, 0};
+				quartzCM_complexExp(&c, &b);
+				return quartz_pushcomplex(Q, c);
+			}
+		}
+		if(atype == QUARTZ_TREAL) {
+			quartz_Real a = quartz_toreal(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				return quartz_pushreal(Q, pow(a, b));
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				return quartz_pushreal(Q, pow(a, b));
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b.real == 0 && b.imaginary == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				quartz_Complex c = {a, 0};
+				quartzCM_complexExp(&c, &b);
+				return quartz_pushcomplex(Q, c);
+			}
+		}
+		if(atype == QUARTZ_TCOMPLEX) {
+			quartz_Complex a = quartz_tocomplex(Q, -2, &err);
+			if(err) return err;
+			if(btype == QUARTZ_TINT) {
+				quartz_Int b = quartz_tointeger(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				quartzCM_complexExpInt(&a, b);
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TREAL) {
+				quartz_Real b = quartz_toreal(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				quartzCM_complexExpReal(&a, b);
+				return quartz_pushcomplex(Q, a);
+			}
+			if(btype == QUARTZ_TCOMPLEX) {
+				quartz_Complex b = quartz_tocomplex(Q, -1, &err);
+				if(err) return err;
+				err = quartz_popn(Q, 2);
+				if(err) return err;
+				if(b.real == 0 && b.imaginary == 0) return quartz_errorf(Q, QUARTZ_ERUNTIME, "division by 0");
+				quartzCM_complexExp(&a, &b);
+				return quartz_pushcomplex(Q, a);
+			}
+		}
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid ** operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
+	}
+	// bitops are way easier
+	if(op == QUARTZ_BINOP_BAND) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, a & b);
+	}
+	if(op == QUARTZ_BINOP_BOR) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, a | b);
+	}
+	if(op == QUARTZ_BINOP_BXOR) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, a ^ b);
+	}
+	if(op == QUARTZ_BINOP_BSHIFTL) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, a << b);
+	}
+	if(op == QUARTZ_BINOP_BSHIFTR) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, a >> b);
+	}
+	size_t bitSize = QUARTZ_BITSPERUNIT * sizeof(quartz_Int);
+	if(op == QUARTZ_BINOP_BROTL) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, (a << b) | (a >> (bitSize - b)));
+	}
+	if(op == QUARTZ_BINOP_BROTR) {
+		quartz_Int a = quartz_tointeger(Q, -2, &err);
+		if(err) return err;
+		quartz_Int b = quartz_tointeger(Q, -1, &err);
+		if(err) return err;
+		err = quartz_popn(Q, 2);
+		if(err) return err;
+		return quartz_pushint(Q, (a >> b) | (a << (bitSize - b)));
 	}
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid operator for type %s", quartz_typenames[atype]);
 }

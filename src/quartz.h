@@ -191,6 +191,8 @@ void quartz_destroyThread(quartz_Thread *Q);
 #define QUARTZ_VER_PATCH 0
 
 const char *quartz_version();
+// the OS name
+const char *quartz_platform();
 
 // TODO: loading more of stdlib
 quartz_Errno quartz_openstdlib(quartz_Thread *Q);

@@ -37,6 +37,11 @@ void quartzCM_complexExpInt(quartz_Complex *c, quartz_Int x) {
 		return;
 	}
 	if(x == 1) return;
+	if(x < 0) {
+		quartzCM_complexExpInt(c, -x);
+		quartzCM_complexInv(c);
+		return;
+	}
 	if(x % 2 == 0) {
 		quartzCM_complexExpInt(c, x/2);
 	} else {

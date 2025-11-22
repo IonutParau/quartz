@@ -1,4 +1,5 @@
 #include "quartz.h"
+#include "platform.h"
 
 static quartz_Errno quartz_libcore_len(quartz_Thread *Q, size_t argc) {
 	quartz_Errno err;
@@ -64,11 +65,46 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	
 	// TODO: like, everything
 	
+	// platform info
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT * sizeof(quartz_Int));
+	if(err) return err;
+	err = quartz_setglobal(Q, "_INTBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT * sizeof(quartz_Real));
+	if(err) return err;
+	err = quartz_setglobal(Q, "_REALBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT * sizeof(quartz_Complex));
+	if(err) return err;
+	err = quartz_setglobal(Q, "_COMPLEXBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT * sizeof(void *));
+	if(err) return err;
+	err = quartz_setglobal(Q, "_PTRBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushstring(Q, quartz_platform());
+	if(err) return err;
+	err = quartz_setglobal(Q, "_PLATFORM", -1);
+	if(err) return err;
+	quartz_pop(Q);
+
+	// version info
+
 	err = quartz_pushstring(Q, quartz_version());
 	if(err) return err;
 	err = quartz_setglobal(Q, "_VERSION", -1);
 	if(err) return err;
 	quartz_pop(Q);
+
+	// package info
 
 	err = quartz_pushstring(Q, _PATH);
 	if(err) return err;
@@ -87,6 +123,8 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_setglobal(Q, "_PATHCONF", -1);
 	if(err) return err;
 	quartz_pop(Q);
+
+	// important maps 
 	
 	err = quartz_pushglobals(Q);
 	if(err) return err;
@@ -105,6 +143,8 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_setglobal(Q, "_R", -1);
 	if(err) return err;
 	quartz_pop(Q);
+
+	// functions
 	
 	err = quartz_pushcfunction(Q, quartz_libcore_len);
 	if(err) return err;
