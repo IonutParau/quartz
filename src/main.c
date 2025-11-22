@@ -2,8 +2,13 @@
 
 // to get LSP to sybau
 #include "quartz.h"
+#include "platform.h"
 
 #include "one.c"
+
+#ifdef QUARTZ_POSIX
+#include <unistd.h>
+#endif
 
 static quartz_Errno testCompiler(quartz_Thread *Q, const char *s) {
 	quartz_Errno err;
@@ -16,6 +21,52 @@ static quartz_Errno testCompiler(quartz_Thread *Q, const char *s) {
 	return quartz_call(Q, 0, QUARTZ_CALL_STATIC);
 }
 
+static void printVersionAndCopyright() {
+	printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
+}
+
+static quartz_Errno repl(quartz_Thread *Q) {
+	quartz_Errno err;
+	char *line = NULL;
+	size_t linebuflen = 0;
+	const char *src = "(stdin)";
+	size_t srclen = strlen(src);
+	while(true) {
+		fputs("> ", stdout);
+		fflush(stdout);
+		ssize_t linelen = getline(&line, &linebuflen, stdin);
+		if(linelen < 0) {
+			free(line);
+			fputs("\n", stdout);
+			return QUARTZ_OK; // trust
+		}
+		err = quartz_pushlscript(Q, line, linelen, src, srclen);
+		if(err) return err;
+		err = quartz_pushlstring(Q, src, srclen);
+		if(err) return err;
+		// not protected, L
+		err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+		if(err) return err;
+	}
+}
+
+static quartz_Errno execStdin(quartz_Thread *Q) {
+	quartz_Errno err;
+	quartz_Buffer buf;
+	err = quartz_bufinit(Q, &buf, 8192);
+	if(err) return err;
+	char chunk[8192];
+	while(!feof(stdin)) {
+		size_t len = fread(chunk, 1, sizeof(chunk), stdin);
+		err = quartz_bufputls(&buf, chunk, len);
+		if(err) return err;
+	}
+	err = quartz_pushlscript(Q, buf.buf, buf.len, "(stdin)", 7);
+	quartz_bufdestroy(&buf);
+	if(err) return err;
+	return quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+}
+
 static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 	quartz_Errno err;
 
@@ -23,62 +74,120 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 	if(err) return err;
 
 	if(argc == 1) {
-		// repl
-		printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
-		char *line = NULL;
-		size_t linebuflen = 0;
-		const char *src = "(stdin)";
-		size_t srclen = strlen(src);
-		while(true) {
-			fputs("> ", stdout);
-			fflush(stdout);
-			ssize_t linelen = getline(&line, &linebuflen, stdin);
-			if(linelen < 0) {
-				free(line);
-				fputs("\n", stdout);
-				return QUARTZ_OK; // trust
-			}
-			err = quartz_pushlscript(Q, line, linelen, src, srclen);
-			if(err) return err;
-			err = quartz_pushlstring(Q, src, srclen);
-			if(err) return err;
-			// not protected, L
-			err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-			if(err) return err;
+#ifdef QUARTZ_POSIX
+		if(isatty(STDIN_FILENO)) {
+			printVersionAndCopyright();
+			return repl(Q);
 		}
+		return execStdin(Q);
+#else
+		printVersionAndCopyright();
+		return repl(Q);
+#endif
 	}
 
+	const char *helpMsg =
+		QUARTZ_VERSION "\n"
+		"quartz [opts] [-] [script] [...args] \n"
+		"-i - Enter repl, default if no options are specified\n"
+		"-v - Print version and other program information\n"
+		"-h / --help - Print help message and exit\n"
+		"-r <statement> - Execute <statement> as a script\n"
+		"-e <expression> - Evaluate <expression> and print result\n"
+		"-d - Compile and disassemble\n"
+		"- - Execute stdin\n"
+		"-- - Stop reading options\n"
+		;
+
 	if(argc >= 2) {
-		// TODO: run script
-		const char *path = argv[1];
-
-		FILE *f = fopen(path, "r");
-		if(f == NULL) {
-			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		bool interactive = false;
+		size_t off = 1;
+		while(off < argc) {
+			const char *arg = argv[off];
+			if(strcmp(arg, "--") == 0) {
+				off++;
+				break;
+			}
+			if(strcmp(arg, "-i") == 0) {
+				off++;
+				interactive = true;
+				continue;
+			}
+			if(strcmp(arg, "-v") == 0) {
+				off++;
+				printVersionAndCopyright();
+				continue;
+			}
+			if(strcmp(arg, "-h") == 0) {
+				off++;
+				fputs(helpMsg, stdout);
+				fflush(stdout);
+				return QUARTZ_OK;
+			}
+			if(strcmp(arg, "-r") == 0) {
+				off++;
+				const char *s = argv[off];
+				if(s == NULL) {
+					return quartz_errorf(Q, QUARTZ_ERUNTIME, "no statement specified");
+				}
+				err = quartz_pushscript(Q, s, "(cli)");
+				if(err) return err;
+				err = quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+				if(err) return err;
+				off++;
+				continue;
+			}
+			if(strcmp(arg, "-e") == 0) {
+				// TODO:
+				return quartz_errorf(Q, QUARTZ_ERUNTIME, "no running expressions yet");
+				continue;
+			}
+			if(strcmp(arg, "-d") == 0) {
+				// TODO:
+				return quartz_errorf(Q, QUARTZ_ERUNTIME, "no disassembly yet");
+				continue;
+			}
+			if(strcmp(arg, "-") == 0) {
+				off++;
+				err = execStdin(Q);
+				if(err) return err;
+				break;
+			}
+			break;
 		}
 
-		fseek(f, 0, SEEK_END);
-		size_t fileSize = ftell(f);
-		fseek(f, 0, SEEK_SET);
+		const char *path = argv[off];
+		if(path) {
+			FILE *f = fopen(path, "r");
+			if(f == NULL) {
+				return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+			}
 
-		char *buf = malloc(fileSize+1);
-		size_t read = 0;
-		while(read < fileSize) {
-			size_t fresh = fread(buf + read, 1, fileSize - read, f);
-			read += fresh;
-		}
-		buf[fileSize] = '\0';
+			fseek(f, 0, SEEK_END);
+			size_t fileSize = ftell(f);
+			fseek(f, 0, SEEK_SET);
 
-		err = quartz_pushscript(Q, buf, path);
-		free(buf);
-		if(err) return err;
+			char *buf = malloc(fileSize+1);
+			size_t read = 0;
+			while(read < fileSize) {
+				size_t fresh = fread(buf + read, 1, fileSize - read, f);
+				read += fresh;
+			}
+			buf[fileSize] = '\0';
 
-		for(size_t i = 1; i < argc; i++) {
-			err = quartz_pushstring(Q, argv[i]);
+			err = quartz_pushscript(Q, buf, path);
+			free(buf);
+			if(err) return err;
+
+			for(size_t i = off; i < argc; i++) {
+				err = quartz_pushstring(Q, argv[i]);
+				if(err) return err;
+			}
+
+			err = quartz_call(Q, argc - off, QUARTZ_CALL_STATIC);
 			if(err) return err;
 		}
-
-		return quartz_call(Q, argc - 1, QUARTZ_CALL_STATIC);
+		return interactive ? repl(Q) : QUARTZ_OK;
 	}
 
 	return QUARTZ_OK;
@@ -102,7 +211,6 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	printf("Peak Memory Usage: %zu\n", quartz_gcPeak(Q));
 	quartz_destroyThread(Q);
 	return 0;
 }
