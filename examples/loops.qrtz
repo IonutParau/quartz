@@ -1,0 +1,15 @@
+# naive while loop
+local x = 0
+
+while x < 10 {
+	io.writeln("x: ", x + 1)
+	x = x + 1
+}
+
+# printing args
+x = 0
+
+while x < len(argv) {
+	io.writeln("argv[", x, "] = ", argv[x])
+	x = x + 1
+}

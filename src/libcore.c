@@ -44,6 +44,16 @@ static quartz_Errno quartz_libcore_load(quartz_Thread *Q, size_t argc) {
 	return quartz_return(Q, -1);
 }
 
+static quartz_Errno quartz_libcore_append(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	if(argc == 0) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "no container");
+	}
+	err = quartz_append(Q, argc - 1);
+	if(err) return err;
+	return quartz_return(Q, -1);
+}
+
 quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	quartz_Errno err;
 
@@ -117,6 +127,12 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_pushcfunction(Q, quartz_libcore_load);
 	if(err) return err;
 	err = quartz_setglobal(Q, "load", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_append);
+	if(err) return err;
+	err = quartz_setglobal(Q, "append", -1);
 	if(err) return err;
 	quartz_pop(Q);
 

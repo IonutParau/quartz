@@ -29,6 +29,10 @@ typedef enum quartz_NodeType {
 	QUARTZ_NODE_BLOCK,
 	// first node is condition, 2nd node is body, and 3rd node is else if applicable
 	QUARTZ_NODE_IF,
+	// first node is condition, 2nd node is body
+	QUARTZ_NODE_WHILE,
+	// set a = b
+	QUARTZ_NODE_ASSIGN,
 } quartz_NodeType;
 
 typedef struct quartz_Node {

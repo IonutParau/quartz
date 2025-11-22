@@ -709,6 +709,56 @@ quartz_Errno quartz_setindex(quartz_Thread *Q) {
 	return quartz_popn(Q, 3);
 }
 
+quartz_Errno quartz_append(quartz_Thread *Q, size_t n) {
+	if(n == 0) return QUARTZ_OK;
+	quartz_Errno err;
+	err = quartz_stackassert(Q, n + 1);
+	if(err) return err;
+	size_t arridx = quartz_getstacksize(Q) - n;
+	quartz_Value container = quartzI_getStackValue(Q, arridx - 1);
+	if(container.type != QUARTZ_VOBJ) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "object expected");
+	}
+	quartz_Object *obj = container.obj;
+	if(obj->type == QUARTZ_OLIST) {
+		quartz_List *l = (quartz_List *)obj;
+		size_t newLen = l->len + n;
+		size_t newCap = l->cap;
+		while(newLen > newCap) newCap *= 2;
+		if(newCap != l->cap) {
+			quartz_Value *newVals = quartz_realloc(Q, l->vals, sizeof(quartz_Value) * l->cap, sizeof(quartz_Value) * newCap);
+			if(newVals == NULL) return quartz_oom(Q);
+			l->vals = newVals;
+			l->cap = newCap;
+		}
+		for(size_t i = 0; i < n; i++) {
+			l->vals[l->len + i] = quartzI_getStackValue(Q, arridx + i);
+		}
+		l->len = newLen;
+		return quartz_popn(Q, n);
+	}
+	if(obj->type == QUARTZ_OTUPLE) {
+		quartz_Tuple *t = (quartz_Tuple *)obj;
+		quartz_Tuple *out = quartzI_newTuple(Q, t->len + n);
+		if(out == NULL) return quartz_oom(Q);
+		for(size_t i = 0; i < t->len; i++) {
+			out->vals[i] = t->vals[i];
+		}
+		for(size_t i = 0; i < n; i++) {
+			out->vals[t->len + i] = quartzI_getStackValue(Q, arridx + i);
+		}
+		quartz_Value v = (quartz_Value) {
+			.type = QUARTZ_VOBJ,
+			.obj = &out->obj,
+		};
+		quartzI_hash(v);
+		return quartzI_pushRawValue(Q, v);
+	}
+	// set is currently unsupported
+	// sets need to be revisisted
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "array, tuple or set expected");
+}
+
 quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val) {
 	quartz_Errno err;
 	err = quartz_typeassert(Q, ptr, QUARTZ_TPOINTER);

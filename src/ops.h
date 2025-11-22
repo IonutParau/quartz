@@ -25,6 +25,12 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_CNJMP, // if(!stack[-1]) IP += sD
 	QUARTZ_OP_PCJMP, // if(pop()) IP += sD
 	QUARTZ_OP_PCNJMP, // if(!pop()) IP += sD
+	QUARTZ_OP_SETFIELD, // pop value, pop field, pop container, set container[field] = value
+	QUARTZ_OP_SETCONSTFIELD, // like getfield except the field is the constant in uD.
+	QUARTZ_OP_SETMODULE, // set module entry for key in consts[uD]
+	QUARTZ_OP_STORE, // pop value and put it in index uD
+	QUARTZ_OP_LOADUPVAL, // push ups[uD]
+	QUARTZ_OP_STOREUPVAL, // pop value, set ups[uD] = value
 } quartz_OpCode;
 
 #endif

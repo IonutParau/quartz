@@ -255,6 +255,13 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 				.line = node->line,
 			});
 		}
+		if(var.type == QUARTZC_VAR_UPVAL) {
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_LOADUPVAL,
+				.uD = var.index,
+				.line = node->line,
+			});
+		}
 
 		// must be a global
 		size_t globalConst;
@@ -454,8 +461,67 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 	}
 
 	if(node->type == QUARTZ_NODE_BLOCK) {
-		// TODO: make locals be forgotten and dropped and shi
-		return quartzC_pushChildArray(c, node);
+		quartz_Errno err;
+		for(size_t i = 0; i < node->childCount; i++) {
+			err = quartzC_runStatement(c, node->children[i]);
+			if(err) return err;
+		}
+		return QUARTZ_OK;
+	}
+
+	if(node->type == QUARTZ_NODE_ASSIGN) {
+		// assignment
+		// currently ver simple cuz we just don't give a shit
+		quartz_Node *target = node->children[0];
+		quartz_Node *val = node->children[1];
+
+		if(target->type == QUARTZ_NODE_VARIABLE) {
+			err = quartzC_pushValue(c, val);
+			if(err) return err;
+			quartz_Variable var;
+			err = quartzC_useVariable(c, target->str, target->strlen, &var);
+			if(err) return err;
+			if(var.type == QUARTZC_VAR_LOCAL) {
+				return quartzC_writeInstruction(c, (quartz_Instruction) {
+					.op = QUARTZ_OP_STORE,
+					.uD = var.index,
+					.line = node->line,
+				});
+				if(err) return err;
+			} else if(var.type == QUARTZC_VAR_UPVAL) {
+				return quartzC_writeInstruction(c, (quartz_Instruction) {
+					.op = QUARTZ_OP_STOREUPVAL,
+					.uD = var.index,
+					.line = node->line,
+				});
+			} else if(var.type == QUARTZC_VAR_GLOBAL) {
+				size_t constID;
+				err = quartzC_internString(c, target->str, target->strlen, &constID);
+				if(err) return err;
+				return quartzC_writeInstruction(c, (quartz_Instruction) {
+					.op = QUARTZ_OP_SETMODULE,
+					.uD = constID,
+					.line = node->line,
+				});
+			}
+		}
+
+		if(target->type == QUARTZ_NODE_INDEX) {
+			quartz_Node *container = target->children[0];
+			quartz_Node *index = target->children[1];
+			err = quartzC_pushValue(c, container);
+			if(err) return err;
+			err = quartzC_pushValue(c, index);
+			if(err) return err;
+			err = quartzC_pushValue(c, val);
+			if(err) return err;
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_SETFIELD,
+				.line = node->line,
+			});
+		}
+
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "malformed assignment");
 	}
 
 	if(node->type == QUARTZ_NODE_IF) {
@@ -476,6 +542,28 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		} else {
 
 		}
+		return QUARTZ_OK;
+	}
+	
+	if(node->type == QUARTZ_NODE_WHILE) {
+		// welcome to the land of loops
+		size_t cond = c->codesize;
+		err = quartzC_pushValue(c, node->children[0]);
+		if(err) return err;
+		size_t branchA = c->codesize;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {.line = node->line});
+		if(err) return err;
+		err = quartzC_runStatement(c, node->children[1]);
+		if(err) return err;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_JMP,
+			.sD = -(c->codesize - cond),
+			.line = node->line,
+		});
+		if(err) return err;
+		size_t endOfBody = c->codesize;
+		c->code[branchA].op = QUARTZ_OP_PCNJMP;
+		c->code[branchA].sD = endOfBody - branchA;
 		return QUARTZ_OK;
 	}
 
@@ -506,6 +594,15 @@ quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree) {
 		if(err) return err;
 	}
 
+	// safety check
+	if(c->localc > 0) {
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_POP,
+			.uD = c->localc - 1,
+			.line = tree->line,
+		});
+		if(err) return err;
+	}
 	err = quartzC_writeInstruction(c, (quartz_Instruction) {
 		.op = QUARTZ_OP_RETMOD,
 		.line = tree->line,

@@ -223,6 +223,7 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 				if(t.s[0] != ']') {
 					p->pErr = QUARTZ_PARSE_EBADTOK;
 					p->tokExpected = "]";
+					p->errloc = p->curline;
 					return QUARTZ_ESYNTAX;
 				}
 				continue;
@@ -267,6 +268,7 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 					if(t.s[0] == ',') continue;
 					p->pErr = QUARTZ_PARSE_EBADTOK;
 					p->tokExpected = ",";
+					p->errloc = p->curline;
 					return QUARTZ_ESYNTAX;
 				}
 
@@ -466,7 +468,24 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		quartz_Node *var = parent->children[parent->childCount-1];
 		if(var->type == QUARTZ_NODE_CALL) return QUARTZ_OK;
 
-		// TODO: assignment
+		if(var->type == QUARTZ_NODE_VARIABLE || var->type == QUARTZ_NODE_FIELD || var->type == QUARTZ_NODE_INDEX) {
+			parent->childCount--;
+			err = quartzP_nextToken(p, &t);
+			if(err) return err;
+			if(t.s[0] != '=') {
+				p->pErr = QUARTZ_PARSE_EBADTOK;
+				p->tokExpected = "=";
+				p->errloc = p->curline;
+				return QUARTZ_ESYNTAX;
+			}
+			quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_ASSIGN, p->curline, "", 0);
+			if(node == NULL) return QUARTZ_ENOMEM;
+			err = quartzI_addNodeChild(p->Q, node, var);
+			if(err) return err;
+			err = quartzP_parseExpression(p, node);
+			if(err) return err;
+			return quartzI_addNodeChild(p->Q, parent, node);
+		}
 
 		p->pErr = QUARTZ_PARSE_ESTMT;
 		p->errloc = l;
@@ -493,6 +512,41 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		if(t.s[0] != '{') {
 			p->pErr = QUARTZ_PARSE_EBADTOK;
 			p->tokExpected = "{";
+			p->errloc = p->curline;
+			return QUARTZ_ESYNTAX;
+		}
+
+		quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
+		err = quartzI_addNodeChild(p->Q, node, block);
+		if(err) return err;
+
+		err = quartzP_parseStatementBlock(p, block, 0);
+		if(err) return err;
+
+		return quartzI_addNodeChild(p->Q, parent, node);
+	}
+	
+	if(quartzI_strleqlc(t.s, t.len, "while")) {
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		// TODO: evaluate if ifs should always be if(cond) {} and never if cond {}
+		// smth smth parsing structs vs blocks
+
+		// this is an abomination against our lord and savior
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_WHILE, p->curline, "", 0);
+		if(node == NULL) return QUARTZ_ENOMEM;
+
+		err = quartzP_parseExpression(p, node);
+		if(err) return err;
+
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+		
+		if(t.s[0] != '{') {
+			p->pErr = QUARTZ_PARSE_EBADTOK;
+			p->tokExpected = "{";
+			p->errloc = p->curline;
 			return QUARTZ_ESYNTAX;
 		}
 

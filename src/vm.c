@@ -112,6 +112,11 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 		if(pc->op == QUARTZ_OP_NOP) {
 			// nothing
 		} else if(pc->op == QUARTZ_OP_RETMOD) {
+			// safety check
+			quartz_Uint ss = quartz_getstacksize(Q);
+			// argv
+			err = quartz_assertf(Q, ss == 0, QUARTZ_ERUNTIME, "bad stack size (%u)", ss);
+			if(err) return err;
 			Q->stack[c->funcStackIdx] = (quartz_StackEntry) {
 				.isPtr = false,
 				.value.type = QUARTZ_VOBJ,
@@ -205,6 +210,38 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 				pc += pc->sD;
 				continue;
 			}
+		} else if(pc->op == QUARTZ_OP_SETFIELD) {
+			err = quartz_setindex(Q);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_SETCONSTFIELD) {
+			quartz_Value k = f->consts[pc->uD];
+			quartz_Value container = quartzI_getStackValue(Q, -2);
+			quartz_Value v = quartzI_getStackValue(Q, -1);
+			err = quartzI_setIndex(Q, container, k, v);
+			if(err) goto done;
+			err = quartz_popn(Q, 2);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_SETMODULE) {
+			quartz_Value k = f->consts[pc->uD];
+			quartz_Value v = quartzI_getStackValue(Q, -1);
+			err = quartzI_mapSet(Q, f->module, k, v);
+			if(err) goto done;
+			err = quartz_pop(Q);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_STORE) {
+			err = quartz_copy(Q, -1, pc->uD);
+			if(err) goto done;
+			err = quartz_pop(Q);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_LOADUPVAL) {
+			err = quartzI_pushRawValue(Q, closure->ups[pc->uD]);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_STOREUPVAL) {
+			quartz_Value val = quartzI_getStackValue(Q, -1);
+			if(err) goto done;
+			closure->ups[pc->uD] = val;
+			err = quartz_pop(Q);
+			if(err) goto done;
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;
