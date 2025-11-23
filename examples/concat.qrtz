@@ -1,0 +1,4 @@
+local x = "hi "
+local y = "there"
+
+io.writeln(x .. y)

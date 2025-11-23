@@ -176,7 +176,7 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 			err = quartzP_peekToken(p, &t);
 			if(err) return err;
 
-			if(t.s[0] == '.') {
+			if(t.s[0] == '.' && t.len == 1) {
 				err = quartzP_nextToken(p, &t);
 				if(err) return err;
 				
