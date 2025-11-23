@@ -1,0 +1,21 @@
+local strs = ["a", "b", "c", "d", "e"]
+
+local stuff = []
+
+local i = 0
+
+while true {
+	local s = ""
+	for i, str in strs {
+		s = s .. str
+	}
+
+	append(stuff, s)
+
+	if (i & 0xFFFF) == 0 {
+		io.writeln((gc.count() / 1024) / 1024, "MiB")
+		stuff = []
+	}
+
+	i = i + 1
+}
