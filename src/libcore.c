@@ -55,6 +55,43 @@ static quartz_Errno quartz_libcore_append(quartz_Thread *Q, size_t argc) {
 	return quartz_return(Q, -1);
 }
 
+static quartz_Errno quartz_libcore_disassemble(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	if(argc == 0) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "no function");
+	}
+	quartz_Buffer buf;
+	err = quartz_bufinit(Q, &buf, 1024);
+	if(err) return quartz_oom(Q);
+
+	err = quartz_disassemble(Q, 0, &buf);
+	if(err) {
+		quartz_bufdestroy(&buf);
+		return err;
+	}
+
+	err = quartz_pushlstring(Q, buf.buf, buf.len);
+	if(err) {
+		quartz_bufdestroy(&buf);
+		return err;
+	}
+
+	return quartz_return(Q, -1);
+}
+
+static quartz_Errno quartz_libcore_memsizeof(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	quartz_Int mem = 0;
+
+	for(size_t i = 0; i < argc; i++) {
+		mem += quartz_memsizeof(Q, i);
+	}
+
+	err = quartz_pushint(Q, mem);
+	if(err) return err;
+	return quartz_return(Q, -1);
+}
+
 quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	quartz_Errno err;
 
@@ -173,6 +210,18 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_pushcfunction(Q, quartz_libcore_append);
 	if(err) return err;
 	err = quartz_setglobal(Q, "append", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_disassemble);
+	if(err) return err;
+	err = quartz_setglobal(Q, "disassemble", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_memsizeof);
+	if(err) return err;
+	err = quartz_setglobal(Q, "memsizeof", -1);
 	if(err) return err;
 	quartz_pop(Q);
 

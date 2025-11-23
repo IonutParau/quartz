@@ -144,7 +144,7 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			err = quartz_pushvalue(Q, pc->uD);
 			if(err) return err;
 		} else if(pc->op == QUARTZ_OP_CALL) {
-			err = quartz_call(Q, pc->B, pc->C);
+			err = quartz_call(Q, pc->uD, pc->A);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_GETFIELD) {
 			err = quartz_getindex(Q);

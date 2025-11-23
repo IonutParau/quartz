@@ -8,6 +8,8 @@ quartz_Object *quartzI_allocObject(quartz_Thread *Q, quartz_ObjectType type, siz
 
 quartz_String *quartzI_newString(quartz_Thread *Q, size_t len, const char *mem);
 quartz_String *quartzI_newCString(quartz_Thread *Q, const char *s);
+quartz_String *quartzI_newFString(quartz_Thread *Q, const char *fmt, ...);
+quartz_String *quartzI_newFStringV(quartz_Thread *Q, const char *fmt, va_list args);
 quartz_List *quartzI_newList(quartz_Thread *Q, size_t cap);
 quartz_Tuple *quartzI_newTuple(quartz_Thread *Q, size_t len);
 quartz_Set *quartzI_newSet(quartz_Thread *Q, size_t cap);

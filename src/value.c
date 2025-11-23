@@ -1,5 +1,6 @@
 #include "value.h"
 #include "quartz.h"
+#include "gc.h"
 #include <math.h>
 
 bool quartzI_validKey(quartz_Value val) {
@@ -49,7 +50,54 @@ size_t quartzI_memsizeof(quartz_Value val) {
 	if(val.type != QUARTZ_VOBJ) return 0;
 
 	quartz_Object *obj = val.obj;
-	// TODO: memsizeof
+	if(obj->type == QUARTZ_OSTR) {
+		quartz_String *s = (quartz_String *)obj;
+		return sizeof(*s) + s->len + 1;
+	}
+	if(obj->type == QUARTZ_OLIST) {
+		quartz_List *l = (quartz_List *)obj;
+		return sizeof(*l) + l->cap * sizeof(quartz_Value);
+	}
+	if(obj->type == QUARTZ_OTUPLE) {
+		quartz_Tuple *tup = (quartz_Tuple *)obj;
+		return sizeof(*tup) + tup->len * sizeof(quartz_Value);
+	}
+	if(obj->type == QUARTZ_OSET) {
+		quartz_Set *s = (quartz_Set *)obj;
+		return sizeof(*s) + s->cap * sizeof(quartz_Value);
+	}
+	if(obj->type == QUARTZ_OMAP) {
+		quartz_Map *m = (quartz_Map *)obj;
+		return sizeof(*m) + m->capacity * sizeof(quartz_MapPair);
+	}
+	if(obj->type == QUARTZ_OSTRUCT) {
+		quartz_Struct *s = (quartz_Struct *)obj;
+		size_t fieldLen = s->fields->len;
+		return sizeof(*s) + fieldLen * sizeof(quartz_Value);
+	}
+	if(obj->type == QUARTZ_OFUNCTION) {
+		quartz_Function *f = (quartz_Function *)obj;
+		size_t m = sizeof(*f);
+		m += sizeof(f->code[0]) * f->codesize;
+		m += sizeof(f->consts[0]) * f->constCount;
+		m += sizeof(f->upvaldefs[0]) * f->upvalCount;
+		return m;
+	}
+	if(obj->type == QUARTZ_OCLOSURE) {
+		quartz_Closure *c = (quartz_Closure *)obj;
+		return sizeof(*c) + c->len * sizeof(quartz_Value);
+	}
+	if(obj->type == QUARTZ_OPOINTER) {
+		return sizeof(quartz_Pointer);
+	}
+	if(obj->type == QUARTZ_OTHREAD) {
+		quartz_Thread *Q = (quartz_Thread *)obj;
+		return sizeof(*Q) + sizeof(quartz_StackEntry) * Q->stackCap + sizeof(quartz_CallEntry) * Q->callCap;
+	}
+	if(obj->type == QUARTZ_OUSERDATA) {
+		quartz_Userdata *u = (quartz_Userdata *)obj;
+		return sizeof(*u) + u->userdataSize + sizeof(quartz_Value) * u->associatedLen;
+	}
 	return 0;
 }
 
@@ -390,4 +438,27 @@ badKeyType:
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "illegal key type: %s", quartz_typenames[quartzI_trueTypeOf(key)]);
 ok:
 	return QUARTZ_OK;
+}
+
+quartz_String *quartzI_valueToString(quartz_Thread *Q, quartz_Value v) {
+	quartz_Type t = quartzI_trueTypeOf(v);
+	if(t == QUARTZ_TSTR) {
+		return (quartz_String *)v.obj;
+	}
+	if(t == QUARTZ_TNULL) {
+		return quartzI_newCString(Q, "null");
+	}
+	if(t == QUARTZ_TBOOL) {
+		return quartzI_newCString(Q, v.b ? "true" : "false");
+	}
+	if(t == QUARTZ_TINT) {
+		return quartzI_newFString(Q, "%d", v.integer);
+	}
+	if(t == QUARTZ_TREAL) {
+		return quartzI_newFString(Q, "%f", v.real);
+	}
+	if(t == QUARTZ_TCOMPLEX) {
+		return quartzI_newFString(Q, "%C", v.complex);
+	}
+	return quartzI_newFString(Q, "<%s at %p>", quartz_typenames[t], v.obj);
 }

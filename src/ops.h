@@ -9,7 +9,7 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_PUSHCONST, // push consts[uD]
 	QUARTZ_OP_GETEXTERN, // load entry named consts[uD] from the module or globals table
 	QUARTZ_OP_LOAD, // push value at index uD
-	QUARTZ_OP_CALL, // invoke f with B args, call flags are in C.
+	QUARTZ_OP_CALL, // invoke f with uD args, call flags are in A.
 	QUARTZ_OP_GETFIELD, // pop field, pop value, push value[field]
 	QUARTZ_OP_GETCONSTFIELD, // like getfield except the field is the constant in uD.
 	QUARTZ_OP_VARARGPREP, // handles ..., the intended arg count is in uD.
@@ -46,6 +46,8 @@ typedef enum quartz_OpDisArgFlags {
 	QUARTZ_DISARG_uD = 1<<3,
 	QUARTZ_DISARG_sD = 1<<4,
 	QUARTZ_DISARG_uD_const = 1<<5,
+	QUARTZ_DISARG_uD_upval = 1<<6,
+	QUARTZ_DISARG_sD_relrip = 1<<7,
 } quartz_OpDisArgFlags;
 
 // info for disassembly
@@ -53,5 +55,7 @@ typedef struct quartz_OpDisInfo {
 	const char *name;
 	quartz_OpDisArgFlags args;
 } quartz_OpDisInfo;
+
+extern quartz_OpDisInfo quartzI_disInfo[QUARTZ_VMOPS_COUNT];
 
 #endif

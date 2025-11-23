@@ -524,5 +524,8 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
 // get the capacity (for array and map)
 size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err);
 size_t quartz_memsizeof(quartz_Thread *Q, int x);
+// disassembles a function into a buffer
+// if it defines functions, those are also disassembled
+quartz_Errno quartz_disassemble(quartz_Thread *Q, int x, quartz_Buffer *buf);
 
 #endif

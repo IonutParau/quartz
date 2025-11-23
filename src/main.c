@@ -109,6 +109,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 
 	if(argc >= 2) {
 		bool interactive = false;
+		bool disassemble = false;
 		size_t off = 1;
 		while(off < argc) {
 			const char *arg = argv[off];
@@ -151,8 +152,8 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 				continue;
 			}
 			if(strcmp(arg, "-d") == 0) {
-				// TODO:
-				return quartz_errorf(Q, QUARTZ_ERUNTIME, "no disassembly yet");
+				off++;
+				disassemble = true;
 				continue;
 			}
 			if(strcmp(arg, "-") == 0) {
@@ -187,13 +188,27 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			free(buf);
 			if(err) return err;
 
-			for(size_t i = off; i < argc; i++) {
-				err = quartz_pushstring(Q, argv[i]);
+			if(disassemble) {
+				quartz_Buffer buf;
+				err = quartz_bufinit(Q, &buf, 65536);
+				if(err) return quartz_erroras(Q, err);
+				err = quartz_disassemble(Q, -1, &buf);
+				if(err) {
+					quartz_bufdestroy(&buf);
+					return err;
+				}
+				fwrite(buf.buf, sizeof(buf.buf[0]), buf.len, stdout);
+				fflush(stdout);
+				return QUARTZ_OK;
+			} else {
+				for(size_t i = off; i < argc; i++) {
+					err = quartz_pushstring(Q, argv[i]);
+					if(err) return err;
+				}
+
+				err = quartz_call(Q, argc - off, QUARTZ_CALL_STATIC);
 				if(err) return err;
 			}
-
-			err = quartz_call(Q, argc - off, QUARTZ_CALL_STATIC);
-			if(err) return err;
 		}
 		return interactive ? repl(Q) : QUARTZ_OK;
 	}

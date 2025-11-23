@@ -781,6 +781,11 @@ quartz_Errno quartz_append(quartz_Thread *Q, size_t n) {
 }
 
 quartz_Errno quartz_iterate(quartz_Thread *Q) {
+	quartz_Errno err = quartz_stackassert(Q, 3);
+	if(err) return err;
+	quartz_Value container = quartzI_getStackValue(Q, -3);
+	quartz_Value key = quartzI_getStackValue(Q, -2);
+	quartz_Value value = quartzI_getStackValue(Q, -1);
 	return QUARTZ_OK;
 }
 
@@ -871,36 +876,6 @@ quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var) {
 	return quartzI_pushRawValue(Q, v);
 }
 
-static quartz_Errno quartzI_setstringf(quartz_Thread *Q, int x, const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-
-	quartz_Errno err = QUARTZ_OK;
-
-	quartz_Buffer buf;
-	err = quartz_bufinit(Q, &buf, 16);
-	if(err) goto done;
-
-	err = quartz_bufputfv(&buf, fmt, args);
-	if(err) goto done;
-
-	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
-	if(s == NULL) {
-		err = quartz_oom(Q);
-		goto done;
-	}
-
-	quartzI_setStackValue(Q, x, (quartz_Value) {
-		.type = QUARTZ_VOBJ,
-		.obj = &s->obj,
-	});
-
-done:
-	quartz_bufdestroy(&buf);
-	va_end(args);
-	return err;
-}
-
 quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
 	quartz_Errno err;
 	err = quartz_assertf(Q, quartz_validstackslot(Q, x), QUARTZ_ERUNTIME, "invalid stack slot");
@@ -918,30 +893,14 @@ quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
 		return QUARTZ_OK;
 	}
 	if(result == QUARTZ_TSTR) {
-		if(t == QUARTZ_TNULL) {
-			return quartzI_setstringf(Q, x, "null");
-		}
-		if(t == QUARTZ_TBOOL) {
-			return quartzI_setstringf(Q, x, quartz_truthy(Q, x) ? "true" : "false");
-		}
-		if(t == QUARTZ_TINT) {
-			quartz_Int i = quartz_tointeger(Q, x, &err);
-			if(err) return err;
-			return quartzI_setstringf(Q, x, "%d", i);
-		}
-		if(t == QUARTZ_TREAL) {
-			quartz_Real r = quartz_toreal(Q, x, &err);
-			if(err) return err;
-			return quartzI_setstringf(Q, x, "%f", r);
-		}
-		if(t == QUARTZ_TCOMPLEX) {
-			quartz_Complex c = quartz_tocomplex(Q, x, &err);
-			if(err) return err;
-			return quartzI_setstringf(Q, x, "%C", c);
-		}
-		// catch-all for the other types
 		quartz_Value v = quartzI_getStackValue(Q, x);
-		return quartzI_setstringf(Q, x, "<%s at %p>", quartz_typenames[t], v.obj);
+		quartz_String *s = quartzI_valueToString(Q, v);
+		if(s == NULL) return quartz_oom(Q);
+		quartzI_setStackValue(Q, x, (quartz_Value) {
+			.type = QUARTZ_VOBJ,
+			.obj = &s->obj,
+		});
+		return QUARTZ_OK;
 	}
 	if(result == QUARTZ_TINT) {
 		if(t == QUARTZ_TREAL) {
@@ -1654,5 +1613,3 @@ size_t quartz_cap(quartz_Thread *Q, int x, quartz_Errno *err) {
 size_t quartz_memsizeof(quartz_Thread *Q, int x) {
 	return quartzI_memsizeof(quartzI_getStackValue(Q, x));
 }
-
-

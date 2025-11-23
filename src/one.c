@@ -8,6 +8,7 @@
 #include "buf.c"
 #include "vm.c"
 #include "cmath.c"
+#include "disasm.c"
 // compiler
 #include "lexer.c"
 #include "parser.c"

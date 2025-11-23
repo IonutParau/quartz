@@ -213,6 +213,29 @@ quartz_String *quartzI_newCString(quartz_Thread *Q, const char *s) {
 	return quartzI_newString(Q, len, s);
 }
 
+quartz_String *quartzI_newFString(quartz_Thread *Q, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	quartz_String *s = quartzI_newFStringV(Q, fmt, args);
+	va_end(args);
+	return s;
+}
+
+quartz_String *quartzI_newFStringV(quartz_Thread *Q, const char *fmt, va_list args) {
+	quartz_Buffer buf;
+	quartz_Errno err = quartz_bufinit(Q, &buf, 256);
+	if(err) return NULL;
+
+	err = quartz_bufputfv(&buf, fmt, args);
+	if(err) {
+		quartz_bufdestroy(&buf);
+		return NULL;
+	}
+	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
+	quartz_bufdestroy(&buf);
+	return s;
+}
+
 quartz_List *quartzI_newList(quartz_Thread *Q, size_t cap) {
 	if(cap == 0) cap = 8;
 	quartz_Value *buf = quartz_alloc(Q, sizeof(quartz_Value) * cap);

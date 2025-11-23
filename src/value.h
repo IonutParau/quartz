@@ -250,5 +250,6 @@ bool quartzI_isLegalPair(quartz_MapPair pair);
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v);
 quartz_Errno quartzI_getIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value *val);
 quartz_Errno quartzI_setIndex(quartz_Thread *Q, quartz_Value container, quartz_Value key, quartz_Value val);
+quartz_String *quartzI_valueToString(quartz_Thread *Q, quartz_Value v);
 
 #endif

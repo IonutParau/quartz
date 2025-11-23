@@ -82,12 +82,10 @@ void quartzC_freeFailingCompiler(quartz_Compiler c) {
 }
 
 size_t quartzC_countConstants(quartz_Compiler *c) {
-	while(c->outer) c = c->outer;
 	return c->constantsCount;
 }
 
 static quartz_Constants *quartzC_getConstants(quartz_Compiler *c) {
-	while(c->outer) c = c->outer;
 	return c->constants;
 }
 
@@ -150,7 +148,6 @@ quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction ins
 }
 
 quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len) {
-	while(c->outer) c = c->outer;
 	quartz_Constants *list = c->constants;
 	size_t i = 0;
 	while(list) {
@@ -165,7 +162,6 @@ quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len)
 
 quartz_Errno quartzC_addConstant(quartz_Compiler *c, const char *str, size_t len, quartz_Value val) {
 	quartz_Thread *Q = c->Q;
-	while(c->outer) c = c->outer;
 	quartz_Constants *newNode = quartz_alloc(Q, sizeof(quartz_Constants));
 	if(newNode == NULL) return quartz_oom(Q);
 	newNode->next = c->constants;
@@ -399,8 +395,8 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		size_t argc = node->childCount - 1;
 		err = quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_CALL,
-			.B = argc,
-			.C = 0,
+			.A = 0,
+			.uD = argc,
 			.line = node->line,
 		});
 		return QUARTZ_OK;
@@ -473,8 +469,8 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		size_t argc = node->childCount - 1;
 		err = quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_CALL,
-			.B = argc,
-			.C = QUARTZ_CALL_STATIC,
+			.A = QUARTZ_CALL_STATIC,
+			.uD = argc,
 			.line = node->line,
 		});
 		return QUARTZ_OK;
