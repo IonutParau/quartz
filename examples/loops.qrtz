@@ -13,3 +13,14 @@ while x < len(argv) {
 	io.writeln("argv[", x, "] = ", argv[x])
 	x = x + 1
 }
+
+# numbers
+local nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+local sum = 0
+
+for i, num in nums {
+	sum = sum + num * (i+1)
+}
+
+io.writeln(sum / len(nums))

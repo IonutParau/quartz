@@ -237,6 +237,30 @@ quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len
 	return QUARTZ_OK;
 }
 
+quartz_Errno quartzC_defineLocal(quartz_Compiler *c, const char *name, size_t namelen) {
+	quartz_Errno err;
+	quartz_Local *arg = quartz_alloc(c->Q, sizeof(quartz_Local));
+	if(arg == NULL) return quartz_oom(c->Q);
+	arg->str = name;
+	arg->strlen = namelen;
+	arg->index = c->localc++;
+	arg->next = c->localList;
+	c->localList = arg;
+	return QUARTZ_OK;
+}
+
+void quartzC_popLocal(quartz_Compiler *c) {
+	if(c->localc == 0) return;
+	quartz_Local *l = c->localList;
+	c->localList = l->next;
+	c->localc--;
+	quartz_free(c->Q, l, sizeof(quartz_Local));
+}
+
+void quartzC_setLocalCount(quartz_Compiler *c, size_t localc) {
+	while(c->localc > localc) quartzC_popLocal(c);
+}
+
 quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 	quartz_Thread *Q = c->Q;
 	quartz_Errno err;
@@ -346,6 +370,22 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 			});
 		}
 		quartz_Int i = quartzI_atoi(node->str, node->strlen);
+		if(((short)i) != i) {
+			quartz_Int n = quartzC_findConstant(c, node->str, node->strlen);
+			if(n < 0) {
+				n = quartzC_countConstants(c);
+				err = quartzC_addConstant(c, node->str, node->strlen, (quartz_Value) {
+					.type = QUARTZ_VINT,
+					.integer = i,
+				});
+				if(err) return err;
+			}
+			return quartzC_writeInstruction(c, (quartz_Instruction) {
+				.op = QUARTZ_OP_PUSHCONST,
+				.uD = n,
+				.line = node->line,
+			});
+		}
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_PUSHINT,
 			.sD = i,
@@ -373,6 +413,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		if(quartzI_strleql(s, l, "null", 4)) {
 			return quartzC_writeInstruction(c, (quartz_Instruction) {
 				.op = QUARTZ_OP_PUSHNULL,
+				.uD = 0,
 				.line = node->line,
 			});
 		}
@@ -446,26 +487,27 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		} else {
 			err = quartzC_writeInstruction(c, (quartz_Instruction) {
 				.op = QUARTZ_OP_PUSHNULL,
+				.uD = 0,
 				.line = node->line,
 			});
 			if(err) return err;
 		}
-		quartz_Local *l = quartz_alloc(Q, sizeof(quartz_Local));
-		if(l == NULL) return quartz_oom(Q);
-		l->str = node->str;
-		l->strlen = node->strlen;
-		l->index = c->localc++;
-		l->next = c->localList;
-		c->localList = l;
-		return QUARTZ_OK;
+		return quartzC_defineLocal(c, node->str, node->strlen);
 	}
 
 	if(node->type == QUARTZ_NODE_BLOCK) {
 		quartz_Errno err;
+		size_t localc = c->localc;
 		for(size_t i = 0; i < node->childCount; i++) {
 			err = quartzC_runStatement(c, node->children[i]);
 			if(err) return err;
 		}
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_SETSTACK,
+			.uD = localc,
+			.line = node->line,
+		});
+		quartzC_setLocalCount(c, localc);
 		return QUARTZ_OK;
 	}
 
@@ -566,6 +608,63 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 		c->code[branchA].sD = endOfBody - branchA;
 		return QUARTZ_OK;
 	}
+	
+	if(node->type == QUARTZ_NODE_FOR) {
+		// welcome to the land of bullshit
+		size_t stacksize = c->localc;
+		err = quartzC_pushValue(c, node->children[2]);
+		if(err) return err;
+
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_PUSHNULL,
+			.uD = 1,
+			.line = node->line,
+		});
+		if(err) return err;
+		
+		err = quartzC_defineLocal(c, "", 0);
+		if(err) return err;
+		err = quartzC_defineLocal(c, node->children[0]->str, node->children[0]->strlen);
+		if(err) return err;
+		err = quartzC_defineLocal(c, node->children[1]->str, node->children[1]->strlen);
+		if(err) return err;
+	
+		size_t iter = c->codesize;
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_ITERATE,
+			.line = node->line,
+		});
+		if(err) return err;
+		
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_ITERJMP,
+			.line = node->line,
+		});
+		if(err) return err;
+
+		err = quartzC_runStatement(c, node->children[3]);
+		if(err) return err;
+		
+		quartzC_setLocalCount(c, stacksize);
+
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_JMP,
+			.sD = -(c->codesize - iter),
+			.line = node->line,
+		});
+		if(err) return err;
+
+		c->code[iter+1].sD = c->codesize - iter - 1;
+
+		err = quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_SETSTACK,
+			.uD = stacksize,
+			.line = node->line,
+		});
+		if(err) return err;
+
+		return QUARTZ_OK;
+	}
 
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad statement node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }
@@ -581,13 +680,8 @@ quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree) {
 	});
 	if(err) return err;
 
-	quartz_Local *argv = quartz_alloc(c->Q, sizeof(quartz_Local));
-	if(argv == NULL) return quartz_oom(c->Q);
-	argv->str = "argv";
-	argv->strlen = quartzI_strlen(argv->str);
-	argv->index = c->localc++;
-	argv->next = c->localList;
-	c->localList = argv;
+	err = quartzC_defineLocal(c, "argv", 4);
+	if(err) return err;
 	
 	for(size_t i = 0; i < tree->childCount; i++) {
 		err = quartzC_runStatement(c, tree->children[i]);

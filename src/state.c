@@ -780,6 +780,10 @@ quartz_Errno quartz_append(quartz_Thread *Q, size_t n) {
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "array, tuple or set expected");
 }
 
+quartz_Errno quartz_iterate(quartz_Thread *Q) {
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartz_loadPtr(quartz_Thread *Q, int ptr, int val) {
 	quartz_Errno err;
 	err = quartz_typeassert(Q, ptr, QUARTZ_TPOINTER);

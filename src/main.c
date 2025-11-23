@@ -39,6 +39,7 @@ static quartz_Errno repl(quartz_Thread *Q) {
 		while(true) {
 			int c = fgetc(stdin);
 			if(c == EOF || c == '\n' || c == '\4') {
+				if(c == '\4') putc('\n', stdout);
 				break;
 			}
 			err = quartz_bufputc(&linebuf, c);

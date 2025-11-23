@@ -6,10 +6,6 @@
 #include "lexer.h"
 #include "parser.h"
 
-// not gonna write the proof here, but the index in the list always matches stack index.
-// However, the list is backwards.
-// Because of that, the full equasion is localc - i - 1
-// Same things for upvalues
 typedef struct quartz_Local {
 	const char *str;
 	unsigned int strlen;
@@ -84,6 +80,9 @@ quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t le
 
 // effectively resolves a name, and also signals the transfer of upvalues.
 quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len, quartz_Variable *var);
+quartz_Errno quartzC_defineLocal(quartz_Compiler *c, const char *name, size_t namelen);
+void quartzC_popLocal(quartz_Compiler *c);
+void quartzC_setLocalCount(quartz_Compiler *c, size_t localc);
 
 quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node);
 quartz_Errno quartzC_setValue(quartz_Compiler *c, quartz_Node *node, quartz_Node *to);

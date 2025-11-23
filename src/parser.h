@@ -33,6 +33,11 @@ typedef enum quartz_NodeType {
 	QUARTZ_NODE_WHILE,
 	// set a = b
 	QUARTZ_NODE_ASSIGN,
+	// for a, b in c
+	// 2 var nodes indicating a and b
+	// one node for iterated value
+	// another node for the body
+	QUARTZ_NODE_FOR,
 } quartz_NodeType;
 
 typedef struct quartz_Node {

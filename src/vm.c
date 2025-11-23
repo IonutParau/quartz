@@ -3,6 +3,7 @@
 #include "value.h"
 #include "state.h"
 #include "gc.h"
+#include <stdio.h>
 
 quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry) {
 	if(Q->callLen == Q->callCap ) {
@@ -170,7 +171,7 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			err = quartz_pushlist(Q, pc->uD);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_PUSHNULL) {
-			err = quartz_pushnull(Q);
+			err = quartz_setstacksize(Q, quartz_getstacksize(Q) + pc->uD + 1);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_PUSHBOOL) {
 			err = quartz_pushbool(Q, pc->uD != 0);
@@ -242,6 +243,19 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			closure->ups[pc->uD] = val;
 			err = quartz_pop(Q);
 			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_SETSTACK) {
+			err = quartz_setstacksize(Q, pc->uD);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_ITERATE) {
+			err = quartz_iterate(Q);
+			if(err) goto done;
+		} else if(pc->op == QUARTZ_OP_ITERJMP) {
+			if(quartz_typeof(Q, -2) == QUARTZ_TNULL) {
+				// iter over, do jmp
+				pc += pc->sD;
+				continue;
+			}
+			// iter not over, do nothing
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;
