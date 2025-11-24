@@ -784,8 +784,58 @@ quartz_Errno quartz_iterate(quartz_Thread *Q) {
 	quartz_Errno err = quartz_stackassert(Q, 3);
 	if(err) return err;
 	quartz_Value container = quartzI_getStackValue(Q, -3);
-	quartz_Value key = quartzI_getStackValue(Q, -2);
-	quartz_Value value = quartzI_getStackValue(Q, -1);
+	bool first = quartz_typeof(Q, -2) == QUARTZ_TNULL;
+	if(container.type == QUARTZ_VOBJ) {
+		quartz_Object *o = container.obj;
+		if(o->type == QUARTZ_OLIST) {
+			quartz_List *l = (quartz_List *)o;
+			if(first) {
+				if(l->len == 0) return QUARTZ_OK;
+				quartz_Value key = (quartz_Value) {.type = QUARTZ_VINT, .integer = 0};
+				quartz_Value val = l->vals[0];
+				quartzI_setStackValue(Q, -2, key);
+				quartzI_setStackValue(Q, -1, val);
+				return QUARTZ_OK;
+			}
+			quartz_Int i = quartz_tointeger(Q, -2, &err);
+			if(err) return err;
+			quartz_Value key = (quartz_Value) {.type = QUARTZ_VINT, .integer = i + 1};
+			quartz_Value val = {.type = QUARTZ_VNULL};
+			if(key.integer < l->len) {
+				err = quartzI_getIndex(Q, container, key, &val);
+				if(err) return err;
+			} else {
+				key.type = QUARTZ_VNULL;
+			}
+			quartzI_setStackValue(Q, -2, key);
+			quartzI_setStackValue(Q, -1, val);
+			return QUARTZ_OK;
+		}
+		if(o->type == QUARTZ_OTUPLE) {
+			quartz_Tuple *tup = (quartz_Tuple *)o;
+			if(first) {
+				if(tup->len == 0) return QUARTZ_OK;
+				quartz_Value key = (quartz_Value) {.type = QUARTZ_VINT, .integer = 0};
+				quartz_Value val = tup->vals[0];
+				quartzI_setStackValue(Q, -2, key);
+				quartzI_setStackValue(Q, -1, val);
+				return QUARTZ_OK;
+			}
+			quartz_Int i = quartz_tointeger(Q, -2, &err);
+			if(err) return err;
+			quartz_Value key = (quartz_Value) {.type = QUARTZ_VINT, .integer = i + 1};
+			quartz_Value val = {.type = QUARTZ_VNULL};
+			if(key.integer < tup->len) {
+				err = quartzI_getIndex(Q, container, key, &val);
+				if(err) return err;
+			} else {
+				key.type = QUARTZ_VNULL;
+			}
+			quartzI_setStackValue(Q, -2, key);
+			quartzI_setStackValue(Q, -1, val);
+			return QUARTZ_OK;
+		}
+	}
 	return QUARTZ_OK;
 }
 

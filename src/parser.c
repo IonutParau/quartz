@@ -607,7 +607,7 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		err = quartzI_addNodeChild(p->Q, node, local);
 		if(err) return err;
 		
-		local = quartzI_allocAST(p, QUARTZ_NODE_LOCAL, p->curline, a.s, a.len);
+		local = quartzI_allocAST(p, QUARTZ_NODE_LOCAL, p->curline, b.s, b.len);
 		if(local == NULL) return QUARTZ_ENOMEM;
 		err = quartzI_addNodeChild(p->Q, node, local);
 		if(err) return err;
