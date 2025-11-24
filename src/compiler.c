@@ -366,7 +366,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 			});
 		}
 		quartz_Int i = quartzI_atoi(node->str, node->strlen);
-		if(((short)i) != i) {
+		if(((unsigned short)i) != i) {
 			quartz_Int n = quartzC_findConstant(c, node->str, node->strlen);
 			if(n < 0) {
 				n = quartzC_countConstants(c);
@@ -384,7 +384,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		}
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
 			.op = QUARTZ_OP_PUSHINT,
-			.sD = i,
+			.uD = i,
 			.line = node->line,
 		});
 	}

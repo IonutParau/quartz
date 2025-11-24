@@ -14,7 +14,7 @@ quartz_OpDisInfo quartzI_disInfo[QUARTZ_VMOPS_COUNT] = {
 	},
 	[QUARTZ_OP_PUSHINT] = {
 		.name = "pushint",
-		.args = QUARTZ_DISARG_sD,
+		.args = QUARTZ_DISARG_uD,
 	},
 	[QUARTZ_OP_PUSHCONST] = {
 		.name = "pushconst",
@@ -147,7 +147,7 @@ static quartz_Errno quartzDis_disassembleFunc(quartz_Thread *Q, quartz_Buffer *b
 
 	for(size_t i = 0; i < f->constCount; i++) {
 		quartz_Value v = f->consts[i];
-		quartz_String *s = quartzI_valueToString(Q, v);
+		quartz_String *s = quartzI_valueQuoted(Q, v);
 		if(s == NULL) return quartz_oom(Q);
 		constStrs[i] = s;
 

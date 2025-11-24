@@ -57,6 +57,38 @@ quartz_Errno quartz_bufputls(quartz_Buffer *buf, const char *s, size_t len) {
 	return QUARTZ_OK;
 }
 
+quartz_Errno quartz_bufputq(quartz_Buffer *buf, const char *s) {
+	return quartz_bufputlq(buf, s, quartzI_strlen(s));
+}
+
+quartz_Errno quartz_bufputlq(quartz_Buffer *buf, const char *s, size_t len) {
+	quartz_Errno err;
+	err = quartz_bufputc(buf, '"');
+	if(err) return err;
+
+	for(size_t i = 0; i < len; i++) {
+		char c = s[i];
+		if(c == '"') {
+			err = quartz_bufputs(buf, "\\\"");
+		} else if(c == '\t') {
+			err = quartz_bufputs(buf, "\\t");
+		} else if(c == '\r') {
+			err = quartz_bufputs(buf, "\\r");
+		} else if(c == '\n') {
+			err = quartz_bufputs(buf, "\\n");
+		} else if(quartzI_isprint(c)) {
+			err = quartz_bufputc(buf, c);
+		} else {
+			err = quartz_bufputf(buf, "\\x%02x", (quartz_Uint)(unsigned char)c);
+		}
+		if(err) return err;
+	}
+
+	err = quartz_bufputc(buf, '"');
+	if(err) return err;
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartz_bufputp(quartz_Buffer *buf, const void *p) {
 	quartz_Errno err;
 	// we assume 8 bits per byte here, not ideal
@@ -250,10 +282,22 @@ quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) 
 				err = quartz_bufputs(buf, s);
 				if(err) return err;
 			}
+			if(data.d == 'q') {
+				// TODO: lstring stuff
+				const char *s = va_arg(args, const char *);
+				err = quartz_bufputq(buf, s);
+				if(err) return err;
+			}
 			if(data.d == 'z') {
 				size_t len = va_arg(args, size_t);
 				const char *s = va_arg(args, const char *);
 				err = quartz_bufputls(buf, s, len);
+				if(err) return err;
+			}
+			if(data.d == 'Q') {
+				size_t len = va_arg(args, size_t);
+				const char *s = va_arg(args, const char *);
+				err = quartz_bufputlq(buf, s, len);
 				if(err) return err;
 			}
 			if(data.d == 'd') {

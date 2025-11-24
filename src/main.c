@@ -25,7 +25,7 @@ static void printVersionAndCopyright() {
 	printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
 }
 
-static quartz_Errno repl(quartz_Thread *Q) {
+static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
 	quartz_Errno err;
 	const char *src = "(stdin)";
 	size_t srclen = strlen(src);
@@ -48,17 +48,27 @@ static quartz_Errno repl(quartz_Thread *Q) {
 		if(linebuf.len > 0) {
 			err = quartz_pushlscript(Q, linebuf.buf, linebuf.len, src, srclen);
 			if(err) return err;
-			err = quartz_pushlstring(Q, src, srclen);
-			if(err) return err;
-			// not protected, L
-			err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-			if(err) return err;
+			if(disassemble) {
+				quartz_bufreset(&linebuf);
+				err = quartz_disassemble(Q, -1, &linebuf);
+				if(err) return err;
+				err = quartz_pop(Q);
+				if(err) return err;
+				fwrite(linebuf.buf, sizeof(char), linebuf.len, stdout);
+				fflush(stdout);
+			} else {
+				err = quartz_pushlstring(Q, src, srclen);
+				if(err) return err;
+				// not protected, L
+				err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+				if(err) return err;
+			}
 		}
 	}
 	return QUARTZ_OK; // trust
 }
 
-static quartz_Errno execStdin(quartz_Thread *Q) {
+static quartz_Errno execStdin(quartz_Thread *Q, bool disassemble) {
 	quartz_Errno err;
 	quartz_Buffer buf;
 	err = quartz_bufinit(Q, &buf, 8192);
@@ -72,6 +82,19 @@ static quartz_Errno execStdin(quartz_Thread *Q) {
 	err = quartz_pushlscript(Q, buf.buf, buf.len, "(stdin)", 7);
 	quartz_bufdestroy(&buf);
 	if(err) return err;
+	if(disassemble) {
+		// yes there can be memory leaks, but the program will exit
+		// TODO: handle them anyways just as a good practice
+		err = quartz_bufinit(Q, &buf, 8192);
+		if(err) return err;
+		err = quartz_disassemble(Q, -1, &buf);
+		if(err) return err;
+		err = quartz_pop(Q);
+		if(err) return err;
+		fwrite(buf.buf, sizeof(char), buf.len, stdout);
+		fflush(stdout);
+		return QUARTZ_OK;
+	}
 	return quartz_call(Q, 0, QUARTZ_CALL_STATIC);
 }
 
@@ -85,12 +108,12 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 #ifdef QUARTZ_POSIX
 		if(isatty(STDIN_FILENO)) {
 			printVersionAndCopyright();
-			return repl(Q);
+			return repl(Q, false);
 		}
-		return execStdin(Q);
+		return execStdin(Q, false);
 #else
 		printVersionAndCopyright();
-		return repl(Q);
+		return repl(Q, false);
 #endif
 	}
 
@@ -158,7 +181,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			}
 			if(strcmp(arg, "-") == 0) {
 				off++;
-				err = execStdin(Q);
+				err = execStdin(Q, disassemble);
 				if(err) return err;
 				break;
 			}
@@ -210,7 +233,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 				if(err) return err;
 			}
 		}
-		return interactive ? repl(Q) : QUARTZ_OK;
+		return interactive ? repl(Q, disassemble) : QUARTZ_OK;
 	}
 
 	return QUARTZ_OK;

@@ -462,3 +462,27 @@ quartz_String *quartzI_valueToString(quartz_Thread *Q, quartz_Value v) {
 	}
 	return quartzI_newFString(Q, "<%s at %p>", quartz_typenames[t], v.obj);
 }
+
+quartz_String *quartzI_valueQuoted(quartz_Thread *Q, quartz_Value v) {
+	quartz_Type t = quartzI_trueTypeOf(v);
+	if(t == QUARTZ_TSTR) {
+		quartz_String *s = (quartz_String *)v.obj;
+		return quartzI_newFString(Q, "%Q", s->len, s->buf);
+	}
+	if(t == QUARTZ_TNULL) {
+		return quartzI_newCString(Q, "null");
+	}
+	if(t == QUARTZ_TBOOL) {
+		return quartzI_newCString(Q, v.b ? "true" : "false");
+	}
+	if(t == QUARTZ_TINT) {
+		return quartzI_newFString(Q, "%d", v.integer);
+	}
+	if(t == QUARTZ_TREAL) {
+		return quartzI_newFString(Q, "%f", v.real);
+	}
+	if(t == QUARTZ_TCOMPLEX) {
+		return quartzI_newFString(Q, "%C", v.complex);
+	}
+	return quartzI_newFString(Q, "<unquotable>", quartz_typenames[t], v.obj);
+}

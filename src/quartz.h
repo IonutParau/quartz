@@ -248,6 +248,10 @@ quartz_Errno quartz_bufputc(quartz_Buffer *buf, char c);
 quartz_Errno quartz_bufputcr(quartz_Buffer *buf, char c, size_t amount);
 quartz_Errno quartz_bufputs(quartz_Buffer *buf, const char *s);
 quartz_Errno quartz_bufputls(quartz_Buffer *buf, const char *s, size_t len);
+// the string is quoted, as in, " is put around it and characters are escaped
+quartz_Errno quartz_bufputq(quartz_Buffer *buf, const char *s);
+quartz_Errno quartz_bufputlq(quartz_Buffer *buf, const char *s, size_t len);
+
 quartz_Errno quartz_bufputp(quartz_Buffer *buf, const void *p);
 quartz_Errno quartz_bufputn(quartz_Buffer *buf, quartz_Int n);
 quartz_Errno quartz_bufputnx(quartz_Buffer *buf, quartz_Int n, size_t base, size_t minDigits, bool zeroed);

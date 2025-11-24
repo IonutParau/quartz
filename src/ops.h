@@ -5,7 +5,7 @@
 typedef enum quartz_OpCode {
 	QUARTZ_OP_NOP = 0, // do nothing
 	QUARTZ_OP_RETMOD, // return current module
-	QUARTZ_OP_PUSHINT, // push sD as quartz_Int
+	QUARTZ_OP_PUSHINT, // push uD as quartz_Int
 	QUARTZ_OP_PUSHCONST, // push consts[uD]
 	QUARTZ_OP_GETEXTERN, // load entry named consts[uD] from the module or globals table
 	QUARTZ_OP_LOAD, // push value at index uD

@@ -125,7 +125,7 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			};
 			goto done;
 		} else if(pc->op == QUARTZ_OP_PUSHINT) {
-			err = quartz_pushint(Q, pc->sD);
+			err = quartz_pushint(Q, pc->uD);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_PUSHCONST) {
 			err = quartzI_pushRawValue(Q, f->consts[pc->uD]);
