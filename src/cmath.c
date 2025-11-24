@@ -4,7 +4,9 @@
 
 void quartzCM_splitEuler(quartz_Complex *c, quartz_Real *r, quartz_Real *theta) {
 	*r = sqrt(c->real * c->real + c->imaginary * c->imaginary);
-	*theta = atan2(c->imaginary, c->real);
+	// just to be safe
+	if(c->imaginary == 0 && c->real == 0) *theta = 0;
+	else *theta = atan2(c->imaginary, c->real);
 }
 
 void quartzCM_fromEuler(quartz_Complex *c, quartz_Real r, quartz_Real theta) {
