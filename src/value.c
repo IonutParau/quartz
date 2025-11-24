@@ -334,6 +334,9 @@ bool quartzI_isLegalPair(quartz_MapPair pair) {
 
 quartz_Errno quartzI_mapSet(quartz_Thread *Q, quartz_Map *m, quartz_Value key, quartz_Value v) {
 	size_t idealMaxAllocated = m->capacity * 80 / 100;
+	if(!quartzI_validKey(key)) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad key");
+	}
 	if(m->filledAmount >= idealMaxAllocated) {
 		// welp, time to re-size.
 		size_t newCap = m->capacity * 2;
