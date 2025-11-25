@@ -150,7 +150,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 				printVersionAndCopyright();
 				continue;
 			}
-			if(strcmp(arg, "-h") == 0) {
+			if(strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
 				off++;
 				fputs(helpMsg, stdout);
 				fflush(stdout);
