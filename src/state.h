@@ -4,7 +4,8 @@
 #include "quartz.h"
 #include "value.h"
 
-quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q);
+quartz_Value quartzI_currentErrorHandler(quartz_Thread *Q);
+quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q, quartz_Errno oerr);
 quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size);
 quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry);
 void quartzI_popCallEntry(quartz_Thread *Q);

@@ -56,6 +56,7 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 		.f = f,
 		.funcStackIdx = funcIdx,
 		.flags = flags,
+		.errorh = quartzI_currentErrorHandler(Q),
 	};
 	if(quartzI_isInterpretedFunction(f)) {
 		quartz_Function *q = quartzI_getFunction(f);

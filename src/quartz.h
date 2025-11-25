@@ -432,7 +432,7 @@ quartz_Errno quartz_iterate(quartz_Thread *Q);
 // pop the value and set the error handler. The error handler may be a function or null
 // if null, normal error handling is used.
 // In the case of OOM errors, the error handler is not called.
-void quartz_seterrorhandler(quartz_Thread *Q);
+quartz_Errno quartz_seterrorhandler(quartz_Thread *Q);
 quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags);
 // return a value from a call
 quartz_Errno quartz_return(quartz_Thread *Q, int x);

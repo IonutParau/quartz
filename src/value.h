@@ -213,6 +213,8 @@ typedef struct quartz_Thread {
 	quartz_GlobalState *gState;
 	// if null, no error value
 	quartz_Value errorValue;
+	// global error handler
+	quartz_Value errorh;
 	size_t stackCap;
 	size_t stackLen;
 	quartz_StackEntry *stack;

@@ -53,6 +53,7 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 	Q->resumedBy = NULL;
 	Q->resuming = NULL;
 	Q->errorValue.type = QUARTZ_VNULL;
+	Q->errorh.type = QUARTZ_VNULL;
 
 	// init gState
 	gState->gcBlocked = true; // unfortunate GCs could fuck us over, so we just block vro
@@ -193,6 +194,8 @@ quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit) {
 	Q->errorValue = v;
 	quartz_Errno err = quartz_pop(Q);
 	if(err) return err;
+	err = quartzI_invokeErrorHandler(Q, exit);
+	if(err) return err; // error in error handler
 	return exit;
 }
 
@@ -213,7 +216,7 @@ quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt
 	Q->errorValue.obj = &s->obj;
 	quartz_bufdestroy(&buf);
 	// error in error handler
-	quartz_Errno err = quartzI_invokeErrorHandler(Q);
+	quartz_Errno err = quartzI_invokeErrorHandler(Q, exit);
 	if(err) return err;
 	return exit;
 }
@@ -261,8 +264,39 @@ quartz_Errno quartz_assertf(quartz_Thread *Q, bool condition, quartz_Errno exit,
 	return err;
 }
 
-quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q) {
-	return QUARTZ_OK;
+quartz_Value quartzI_currentErrorHandler(quartz_Thread *Q) {
+	quartz_CallEntry *e = quartzI_getCallEntry(Q, 0);
+	if(e == NULL) return Q->errorh;
+	return e->errorh;
+}
+
+quartz_Errno quartzI_invokeErrorHandler(quartz_Thread *Q, quartz_Errno oerr) {
+	if(oerr == QUARTZ_ENOMEM) return QUARTZ_OK; // error handler is not called for OOMs
+	quartz_Errno err = QUARTZ_OK;
+	quartz_Value h = quartzI_currentErrorHandler(Q);
+	if(h.type == QUARTZ_VNULL) return QUARTZ_OK;
+	err = quartzI_pushRawValue(Q, h);
+	if(err) return err;
+	err = quartz_pusherror(Q);
+	if(err) return err;
+	err = quartz_call(Q, 1, 0);
+	if(err) return err;
+	Q->errorValue = quartzI_getStackValue(Q, -1);
+	return quartz_pop(Q);
+}
+
+quartz_Errno quartz_seterrorhandler(quartz_Thread *Q) {
+	quartz_Errno err;
+	err = quartz_stackassert(Q, 1);
+	if(err) return err;
+	quartz_Value errorh = quartzI_getStackValue(Q, -1);
+	quartz_CallEntry *e = quartzI_getCallEntry(Q, 0);
+	if(e == NULL) {
+		Q->errorh = errorh;
+	} else {
+		e->errorh = errorh;
+	}
+	return quartz_pop(Q);
 }
 
 quartz_Errno quartzI_ensureStackSize(quartz_Thread *Q, size_t size) {

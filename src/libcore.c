@@ -92,6 +92,15 @@ static quartz_Errno quartz_libcore_memsizeof(quartz_Thread *Q, size_t argc) {
 	return quartz_return(Q, -1);
 }
 
+static quartz_Errno quartz_libcore_panic(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err;
+	if(argc == 0) {
+		err = quartz_pushstring(Q, "panic");
+		if(err) return err;
+	}
+	return quartz_error(Q, QUARTZ_ERUNTIME);
+}
+
 quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	quartz_Errno err;
 
@@ -222,6 +231,12 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	err = quartz_pushcfunction(Q, quartz_libcore_memsizeof);
 	if(err) return err;
 	err = quartz_setglobal(Q, "memsizeof", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
+	err = quartz_pushcfunction(Q, quartz_libcore_panic);
+	if(err) return err;
+	err = quartz_setglobal(Q, "panic", -1);
 	if(err) return err;
 	quartz_pop(Q);
 
