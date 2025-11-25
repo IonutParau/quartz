@@ -185,6 +185,33 @@ typedef quartz_Errno (quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz
 quartz_Thread *quartz_newThread(quartz_Context *ctx);
 void quartz_destroyThread(quartz_Thread *Q);
 
+typedef enum quartz_CallFlags {
+	QUARTZ_CALL_STATIC = 1<<0, // ret is not needed
+	QUARTZ_CALL_PROTECTED = 1<<1, // a try call
+} quartz_CallFlags;
+
+typedef struct quartz_CallInfo {
+	// false is out of bounds
+	bool valid;
+	size_t argc;
+	size_t curline;
+	bool isVararg;
+	// "C" for C functions, "Quartz" for Quartz functions
+	const char *what;
+	quartz_CallFlags flags;
+} quartz_CallInfo;
+
+typedef enum quartz_CallRequest {
+	// fills in curline, what and pushes the chunkname
+	QUARTZ_CALLREQ_SOURCE = 1<<0,
+	// fills in flags, isVarArg, argc and pushes the function
+	QUARTZ_CALLREQ_FUNC = 1<<1,
+} quartz_CallRequest;
+
+// remember to check info->valid. If false, the entry does not exist, and no data was actually returned.
+size_t quartz_callDepth(quartz_Thread *Q);
+quartz_Errno quartz_requestCallInfo(quartz_Thread *Q, size_t off, quartz_CallRequest request, quartz_CallInfo *info);
+
 #define QUARTZ_VERSION "Quartz -1.0"
 #define QUARTZ_VER_MAJOR -1
 #define QUARTZ_VER_MINOR 0
@@ -199,6 +226,7 @@ quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
 quartz_Errno quartz_openlibgc(quartz_Thread *Q);
+quartz_Errno quartz_openlibvm(quartz_Thread *Q);
 
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
@@ -383,10 +411,6 @@ quartz_Errno quartz_pop(quartz_Thread *Q);
 quartz_Errno quartz_dupn(quartz_Thread *Q, size_t times);
 quartz_Errno quartz_popn(quartz_Thread *Q, size_t times);
 
-typedef enum quartz_CallFlags {
-	QUARTZ_CALL_STATIC = 1<<0, // ret is not needed
-	QUARTZ_CALL_PROTECTED = 1<<1, // a try call
-} quartz_CallFlags;
 
 typedef enum quartz_CmpFlags {
 	QUARTZ_CMP_EQUAL = 1<<0,

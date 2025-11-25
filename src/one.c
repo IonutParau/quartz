@@ -18,3 +18,4 @@
 #include "libcore.c"
 #include "libio.c"
 #include "libgc.c"
+#include "libvm.c"

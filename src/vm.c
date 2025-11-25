@@ -303,3 +303,51 @@ quartz_Errno quartzI_runTopEntry(quartz_Thread *Q) {
 	}
 	return quartzI_callCFunc(Q, quartzI_getCFunction(e->f));
 }
+
+size_t quartz_callDepth(quartz_Thread *Q) {
+	return Q->callLen;
+}
+
+quartz_Errno quartz_requestCallInfo(quartz_Thread *Q, size_t off, quartz_CallRequest request, quartz_CallInfo *info) {
+	quartz_CallEntry *e = quartzI_getCallEntry(Q, off);
+	if(e == NULL) {
+		info->valid = false;
+		return QUARTZ_OK;
+	}
+	quartz_Errno err = QUARTZ_OK;
+	info->valid = true;
+
+	if(request & QUARTZ_CALLREQ_SOURCE) {
+		quartz_Function *f = quartzI_getFunction(e->f);
+		if(f == NULL) {
+			info->what = "C";
+			info->curline = 0;
+			err = quartz_pushstring(Q, "[C]");
+			if(err) return err;
+		} else {
+			info->what = "Quartz";
+			info->curline = e->q.pc->line;
+			err = quartzI_pushRawValue(Q, (quartz_Value) {
+				.type = QUARTZ_VOBJ,
+				.obj = &f->chunkname->obj,
+			});
+			if(err) return err;
+		}
+	}
+	
+	if(request & QUARTZ_CALLREQ_FUNC) {
+		info->flags = e->flags;
+		err = quartzI_pushRawValue(Q, e->f);
+		if(err) return err;
+		quartz_Function *f = quartzI_getFunction(e->f);
+		if(f == NULL) {
+			info->isVararg = true;
+			info->argc = 0;
+		} else {
+			info->isVararg = f->flags & QUARTZ_FUNC_VARARGS;
+			info->argc = f->argc;
+		}
+	}
+
+	return QUARTZ_OK;
+}
