@@ -168,7 +168,6 @@ typedef struct quartz_GlobalState {
 	size_t gcCount;
 	size_t gcTarget;
 	size_t gcPeak;
-	size_t gcUserdataCount; // used to check if we should run finalizers. This only counts userdata with associated values, as those without can be freed in any order.
 	double gcRatio;
 	// if you try to raise a null runtime error
 	quartz_Value badErrorValue;
@@ -229,12 +228,11 @@ typedef struct quartz_Userdata {
 	quartz_Object obj;
 	void *userdata;
 	size_t userdataSize;
-	char *typestr;
+	const char *typestr;
 	quartz_UFunction *uFunc;
 	size_t associatedLen;
 	quartz_Value associated[];
 } quartz_Userdata;
-
 
 bool quartzI_validKey(quartz_Value val);
 // always bake tuple hashes do avoid stackoverflow exploits!

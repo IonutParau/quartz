@@ -463,6 +463,10 @@ quartz_String *quartzI_valueToString(quartz_Thread *Q, quartz_Value v) {
 	if(t == QUARTZ_TCOMPLEX) {
 		return quartzI_newFString(Q, "%C", v.complex);
 	}
+	if(t == QUARTZ_TUSERDATA) {
+		quartz_Userdata *u = (quartz_Userdata *)v.obj;
+		return quartzI_newFString(Q, "<userdata %s at %p>", u->typestr, u->userdata);
+	}
 	return quartzI_newFString(Q, "<%s at %p>", quartz_typenames[t], v.obj);
 }
 
@@ -487,5 +491,5 @@ quartz_String *quartzI_valueQuoted(quartz_Thread *Q, quartz_Value v) {
 	if(t == QUARTZ_TCOMPLEX) {
 		return quartzI_newFString(Q, "%C", v.complex);
 	}
-	return quartzI_newFString(Q, "<unquotable>", quartz_typenames[t], v.obj);
+	return quartzI_newFString(Q, "<unquotable>");
 }

@@ -35,6 +35,15 @@ bool quartzI_strleqlc(const char *a, size_t alen, const char *b) {
 	return b[alen] == '\0';
 }
 
+bool quartzI_streqlc(const char *a, const char *b) {
+	size_t i =0;
+	while (1) {
+		if(a[i] != b[i]) return false;
+		if(a[i] == 0 && b[i] == 0) return true;
+		i++;
+	}
+}
+
 size_t quartzI_trueStringLen(const char *literal, size_t len) {
 	size_t counted = 0;
 	// TODO: eventually we'll have raw string literals, which don't support this
@@ -46,7 +55,13 @@ size_t quartzI_trueStringLen(const char *literal, size_t len) {
 	}
 	while(i < len) {
 		if(literal[i] == '\\') {
+			char c = literal[i+1];
+			i += 2;
 
+			if(c == 'x') {
+				i += 2;
+			}
+			counted++;
 		} else {
 			counted++;
 			i++;
@@ -57,17 +72,43 @@ size_t quartzI_trueStringLen(const char *literal, size_t len) {
 
 void quartzI_trueStringWrite(char *buf, const char *literal, size_t len) {
 	size_t i = 0;
+	size_t j = 0;
 	if(literal[0] == '\'' || literal[0] == '"') {
+		// skip but only in the scan
 		i = 1;
-		buf--; // trust me vro
 		len--;
 	}
 	while(i < len) {
 		if(literal[i] == '\\') {
+			char c = literal[i + 1];
+			i += 2;
 
+			if(c == 'n') {
+				buf[j] = '\n';
+			} else if(c == 't') {
+				buf[j] = '\t';
+			} else if(c == 'r') {
+				buf[j] = '\r';
+			} else if(c == 'f') {
+				buf[j] = '\f';
+			} else if(c == 'v') {
+				buf[j] = '\v';
+			} else if(c == 'a') {
+				buf[j] = '\a';
+			} else if(c == 'b') {
+				buf[j] = '\b';
+			} else if(c == 'e') {
+				buf[j] = '\x1b';
+			} else if(c == 'x') {
+				quartz_Int x = quartzI_getdigit(literal[i]) * 16 + quartzI_getdigit(literal[i+1]);
+				buf[j] = x;
+				i += 2;
+			}
+			j++;
 		} else {
-			buf[i] = literal[i];
+			buf[j] = literal[i];
 			i++;
+			j++;
 		}
 	}
 }

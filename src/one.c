@@ -19,3 +19,4 @@
 #include "libio.c"
 #include "libgc.c"
 #include "libvm.c"
+#include "libbuf.c"

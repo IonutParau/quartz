@@ -108,6 +108,11 @@ void quartz_destroyThread(quartz_Thread *Q) {
 		while(obj) {
 			quartz_Object *cur = obj;
 			obj = cur->nextObject;
+			if(obj->type == QUARTZ_OUSERDATA) {
+				quartz_Userdata *u = (quartz_Userdata *)obj;
+				// please never crash :pray:
+				u->uFunc(Q, u->userdata, QUARTZ_USER_DESTROY);
+			}
 			quartzI_freeObject(Q, cur);
 		}
 		quartz_Context ctx = s->context;
@@ -683,6 +688,30 @@ quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len) {
 	return quartzI_pushRawValue(Q, (quartz_Value) {
 		.type = QUARTZ_VOBJ,
 		.obj = &t->obj,
+	});
+}
+
+quartz_Errno quartz_pushuserdata(quartz_Thread *Q, size_t size, void **outPtr, const char *type) {
+	return quartz_pushuserdatax(Q, size, outPtr, type, 0);
+}
+
+quartz_Errno quartz_pushuserdatax(quartz_Thread *Q, size_t size, void **outPtr, const char *type, size_t associated) {
+	quartz_Errno err = quartz_stackassert(Q, associated);
+	if(err) return err;
+
+	quartz_Userdata *u = quartzI_newUserdata(Q, size, type, associated);
+	if(u == NULL) return quartz_oom(Q);
+
+	if(outPtr != NULL) *outPtr = u->userdata;
+
+	for(size_t i = 0; i < associated; i++) {
+		// stinky downcast, don't care
+		u->associated[i] = quartzI_getStackValue(Q, -(int)associated + i);
+	}
+
+	return quartzI_pushRawValue(Q, (quartz_Value) {
+		.type = QUARTZ_VOBJ,
+		.obj = &u->obj,
 	});
 }
 
@@ -1628,6 +1657,31 @@ quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err) {
 	quartz_Value v = quartzI_getStackValue(Q, x);
 	*err = QUARTZ_OK;
 	return v.complex;
+}
+
+void *quartz_touserdata(quartz_Thread *Q, int x, const char *expected, quartz_Errno *err) {
+	return quartz_touserdatax(Q, x, expected, NULL, err);
+}
+
+void *quartz_touserdatax(quartz_Thread *Q, int x, const char *expected, size_t *len, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TUSERDATA);
+	if(*err) return NULL;
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	quartz_Userdata *u = (quartz_Userdata *)v.obj;
+	if(expected != NULL) {
+		*err = quartz_assertf(Q, quartzI_streqlc(u->typestr, expected), QUARTZ_ERUNTIME, "expected %s userdata, got %s userdata", expected, u->typestr);
+		if(*err) return NULL;
+	}
+	if(len != NULL) *len = u->userdataSize;
+	return u->userdata;
+}
+
+const char *quartz_touserdatatype(quartz_Thread *Q, int x, quartz_Errno *err) {
+	*err = quartz_typeassert(Q, x, QUARTZ_TUSERDATA);
+	if(*err) return NULL;
+	quartz_Value v = quartzI_getStackValue(Q, x);
+	quartz_Userdata *u = (quartz_Userdata *)v.obj;
+	return u->typestr;
 }
 
 bool quartz_truthy(quartz_Thread *Q, int x) {

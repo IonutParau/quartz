@@ -332,6 +332,24 @@ quartz_Thread *quartzI_newThread(quartz_Thread *Q) {
 	return t;
 }
 
+quartz_Userdata *quartzI_newUserdata(quartz_Thread *Q, size_t size, const char *type, size_t associated) {
+	void *buf = quartz_alloc(Q, size);
+	if(buf == NULL) return NULL;
+	quartz_Userdata *u = (quartz_Userdata *)quartzI_allocObject(Q, QUARTZ_OUSERDATA, sizeof(quartz_Userdata) + sizeof(quartz_Value) * associated);
+	if(u == NULL) {
+		quartz_free(Q, buf, size);
+		return NULL;
+	}
+	u->typestr = type;
+	u->userdata = buf;
+	u->userdataSize = size;
+	for(size_t i = 0; i < associated; i++) {
+		u->associated[i].type = QUARTZ_VNULL;
+	}
+	u->associatedLen = associated;
+	return u;
+}
+
 void quartzI_trygc(quartz_Thread *Q) {
 	if(Q->gState->gcCount > Q->gState->gcTarget) {
 		quartz_gc(Q);
@@ -365,5 +383,9 @@ void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj) {
 		quartz_free(Q, f->consts, sizeof(f->consts[0]) * f->constCount);
 		quartz_free(Q, f->code, sizeof(f->code[0]) * f->codesize);
 		quartz_free(Q, f, sizeof(*f));
+	} else if(obj->type == QUARTZ_OUSERDATA) {
+		quartz_Userdata *u = (quartz_Userdata *)obj;
+		quartz_free(Q, u->userdata, u->userdataSize);
+		quartz_free(Q, u, sizeof(*u) + sizeof(u->associated[0]) * u->associatedLen);
 	}
 }

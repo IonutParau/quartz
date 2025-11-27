@@ -17,6 +17,7 @@ quartz_Map *quartzI_newMap(quartz_Thread *Q, size_t cap);
 quartz_Struct *quartzI_newStruct(quartz_Thread *Q, quartz_Tuple *fields);
 quartz_Pointer *quartzI_newPointer(quartz_Thread *Q);
 quartz_Thread *quartzI_newThread(quartz_Thread *Q);
+quartz_Userdata *quartzI_newUserdata(quartz_Thread *Q, size_t size, const char *type, size_t associated);
 
 void quartzI_trygc(quartz_Thread *Q);
 void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj);

@@ -227,6 +227,7 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
 quartz_Errno quartz_openlibgc(quartz_Thread *Q);
 quartz_Errno quartz_openlibvm(quartz_Thread *Q);
+quartz_Errno quartz_openlibbuf(quartz_Thread *Q);
 
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
@@ -391,7 +392,9 @@ quartz_Errno quartz_pushmapx(quartz_Thread *Q, size_t cap);
 quartz_Errno quartz_pushlist(quartz_Thread *Q, size_t len);
 quartz_Errno quartz_pushlistx(quartz_Thread *Q, size_t len, size_t cap);
 quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len);
-quartz_Errno quartz_pushstruct(quartz_Thread *Q, size_t fields);
+quartz_Errno quartz_pushstruct(quartz_Thread *Q, int type);
+quartz_Errno quartz_pushuserdata(quartz_Thread *Q, size_t size, void **outPtr, const char *type);
+quartz_Errno quartz_pushuserdatax(quartz_Thread *Q, size_t size, void **outPtr, const char *type, size_t associated);
 quartz_Errno quartz_pushregistry(quartz_Thread *Q);
 quartz_Errno quartz_pushglobals(quartz_Thread *Q);
 quartz_Errno quartz_pushloaded(quartz_Thread *Q);
@@ -410,7 +413,6 @@ quartz_Errno quartz_dup(quartz_Thread *Q);
 quartz_Errno quartz_pop(quartz_Thread *Q);
 quartz_Errno quartz_dupn(quartz_Thread *Q, size_t times);
 quartz_Errno quartz_popn(quartz_Thread *Q, size_t times);
-
 
 typedef enum quartz_CmpFlags {
 	QUARTZ_CMP_EQUAL = 1<<0,
@@ -546,6 +548,11 @@ const char *quartz_tolstring(quartz_Thread *Q, int x, size_t *len, quartz_Errno 
 quartz_Int quartz_tointeger(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Real quartz_toreal(quartz_Thread *Q, int x, quartz_Errno *err);
 quartz_Complex quartz_tocomplex(quartz_Thread *Q, int x, quartz_Errno *err);
+// excepted can be NULL for "we accept any"
+void *quartz_touserdata(quartz_Thread *Q, int x, const char *expected, quartz_Errno *err);
+// len is in bytes allocated
+void *quartz_touserdatax(quartz_Thread *Q, int x, const char *expected, size_t *len, quartz_Errno *err);
+const char *quartz_touserdatatype(quartz_Thread *Q, int x, quartz_Errno *err);
 bool quartz_truthy(quartz_Thread *Q, int x);
 // get the length (for tuple, array, map and struct)
 size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err);
