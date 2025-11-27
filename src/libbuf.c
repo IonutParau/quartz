@@ -24,7 +24,7 @@ static quartz_Errno quartz_libbuf_alloc(quartz_Thread *Q, size_t argc) {
 	if(err) return err;
 
 	quartz_Buffer *buf;
-	err = quartz_pushuserdata(Q, sizeof(quartz_Buffer), (void **)&buf, quartz_libbuf_typestr);
+	err = quartz_pushuserdata(Q, sizeof(quartz_Buffer), (void **)&buf, quartz_libbuf_typestr, quartz_libbuf_buffunc);
 	if(err) return err;
 	err = quartz_bufinit(Q, buf, num);
 	if(err) return err;

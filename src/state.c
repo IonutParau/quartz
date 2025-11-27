@@ -108,10 +108,13 @@ void quartz_destroyThread(quartz_Thread *Q) {
 		while(obj) {
 			quartz_Object *cur = obj;
 			obj = cur->nextObject;
+			if(obj == NULL) break;
 			if(obj->type == QUARTZ_OUSERDATA) {
 				quartz_Userdata *u = (quartz_Userdata *)obj;
 				// please never crash :pray:
-				u->uFunc(Q, u->userdata, QUARTZ_USER_DESTROY);
+				if(u->uFunc != NULL) {
+					u->uFunc(Q, u->userdata, QUARTZ_USER_DESTROY);
+				}
 			}
 			quartzI_freeObject(Q, cur);
 		}
@@ -691,11 +694,11 @@ quartz_Errno quartz_pushtuple(quartz_Thread *Q, size_t len) {
 	});
 }
 
-quartz_Errno quartz_pushuserdata(quartz_Thread *Q, size_t size, void **outPtr, const char *type) {
-	return quartz_pushuserdatax(Q, size, outPtr, type, 0);
+quartz_Errno quartz_pushuserdata(quartz_Thread *Q, size_t size, void **outPtr, const char *type, quartz_UFunction *f) {
+	return quartz_pushuserdatax(Q, size, outPtr, type, f, 0);
 }
 
-quartz_Errno quartz_pushuserdatax(quartz_Thread *Q, size_t size, void **outPtr, const char *type, size_t associated) {
+quartz_Errno quartz_pushuserdatax(quartz_Thread *Q, size_t size, void **outPtr, const char *type, quartz_UFunction *f, size_t associated) {
 	quartz_Errno err = quartz_stackassert(Q, associated);
 	if(err) return err;
 
@@ -708,6 +711,8 @@ quartz_Errno quartz_pushuserdatax(quartz_Thread *Q, size_t size, void **outPtr, 
 		// stinky downcast, don't care
 		u->associated[i] = quartzI_getStackValue(Q, -(int)associated + i);
 	}
+
+	u->uFunc = f;
 
 	return quartzI_pushRawValue(Q, (quartz_Value) {
 		.type = QUARTZ_VOBJ,

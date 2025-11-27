@@ -347,6 +347,7 @@ quartz_Userdata *quartzI_newUserdata(quartz_Thread *Q, size_t size, const char *
 		u->associated[i].type = QUARTZ_VNULL;
 	}
 	u->associatedLen = associated;
+	u->uFunc = NULL;
 	return u;
 }
 
