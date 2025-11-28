@@ -128,7 +128,9 @@ static quartz_Errno execStdin(quartz_Thread *Q, bool disassemble) {
 		fflush(stdout);
 		return QUARTZ_OK;
 	}
-	return quartz_call(Q, 0, QUARTZ_CALL_STATIC);
+	err = quartz_pushstring(Q, "(stdin)");
+	if(err) return err;
+	return quartz_call(Q, 1, QUARTZ_CALL_STATIC);
 }
 
 static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
