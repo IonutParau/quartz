@@ -1,0 +1,142 @@
+# This was written when
+# the language was very new
+# thus it is written
+# only with stuff available at that time
+
+data = []
+width = 64
+height = 32
+
+{
+	local x = 0
+	while x < (width*height) {
+		append(data, false)
+		x = x + 1
+	}
+}
+
+io.writeln("funcs")
+
+inside = fun(x, y) {
+	if x < 0 { return false }
+	if y < 0 { return false }
+	if x >= width { return false }
+	if y >= height { return false }
+	return true
+}
+
+get = fun(x, y) {
+	if inside(x, y) {
+		return data[x + (y * width)]
+	}
+	return false
+}
+
+set = fun(x, y, val) {
+	if inside(x, y) {
+		data[x + (y * width)] = val
+	}
+}
+
+gen = 0
+
+render = fun() {
+	local y = 0
+	{
+		local i = 0
+		while i < width {
+			io.write("=")
+			i = i + 1
+		}
+		io.writeln(gen)
+	}
+	while y < height {
+		local x = 0
+		while x < width {
+			if get(x, y) {
+				io.write("#")
+			}
+			if get(x, y) == false {
+				io.write(" ")
+			}
+			x = x + 1
+		}
+		io.writeln()
+		y = y + 1
+	}
+	# term escape to move cursor up
+	io.write("\e[", height+1, "A")
+}
+
+count = fun(x, y) {
+	local n = 0
+	if get(x+1, y) { n = n + 1 }
+	if get(x-1, y) { n = n + 1 }
+	if get(x+1, y+1) { n = n + 1 }
+	if get(x+1, y-1) { n = n + 1 }
+	if get(x, y+1) { n = n + 1 }
+	if get(x, y-1) { n = n + 1 }
+	if get(x-1, y+1) { n = n + 1 }
+	if get(x-1, y-1) { n = n + 1 }
+	return n
+}
+
+update = fun() {
+	# rip GC
+	# this simulation is intentionally not super optimized
+	# to be more representative
+	local newData = []
+	local y = 0
+	while y < height {
+		local x = 0
+		while x < width {
+			local cur = get(x, y)
+			local n = count(x, y)
+			if get(x, y) {
+				if n < 2 { cur = false }
+				if n > 3 { cur = false }
+			}
+			if get(x, y) == false {
+				if n == 3 {
+					cur = true
+				}
+			}
+			append(newData, cur)
+			x = x + 1
+		}
+		y = y + 1
+	}
+	data = newData
+}
+
+io.writeln("setup")
+local cx = width//2
+local cy = height//2
+
+# acorn
+
+set(cx, cy, true)
+
+set(cx+1, cy+1, true)
+set(cx+2, cy+1, true)
+set(cx+3, cy+1, true)
+
+set(cx-2, cy-1, true)
+set(cx-2, cy+1, true)
+set(cx-3, cy+1, true)
+
+io.writeln("gens (", width, " x ", height, ")")
+
+local runs = 200
+
+while gen < runs {
+	gen = gen + 1
+
+	# so we can have a benchmark mode
+	if len(argv) == 1 {
+		render()
+	}
+	update()
+}
+
+io.writeln("done (", gc.peak(), ")")

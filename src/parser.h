@@ -38,13 +38,21 @@ typedef enum quartz_NodeType {
 	// one node for iterated value
 	// another node for the body
 	QUARTZ_NODE_FOR,
+	// return (possibly with child value)
+	QUARTZ_NODE_RETURN,
+	// a function expression.
+	// all children, except for the last, are of type VARIABLE and are the parameter names.
+	// the last child is the function body
+	// flags is set in there for stuff
+	QUARTZ_NODE_FUNCTION,
 } quartz_NodeType;
 
 typedef struct quartz_Node {
 	quartz_NodeType type;
 	unsigned int line;
-	// for stuff like doing a 2nd pass to fix jumps in loops 
-	unsigned int bytecodeIndex;
+	union {
+		quartz_FunctionFlags funcflags;
+	};
 	const char *str;
 	size_t strlen;
 	struct quartz_Node **children;

@@ -34,7 +34,7 @@ typedef enum quartz_OpCode {
 	QUARTZ_OP_SETSTACK, // set stack size of uD
 	QUARTZ_OP_ITERATE, // call quartz_iterate()
 	QUARTZ_OP_ITERJMP, // if the key is null, pop the 3 values and IP += sD
-	
+	QUARTZ_OP_RET, // if A is 0, return nothing. If A is 1, return top value
 
 	QUARTZ_VMOPS_COUNT, // count
 } quartz_OpCode;

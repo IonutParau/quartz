@@ -154,7 +154,8 @@ quartz_Int quartzC_findConstant(quartz_Compiler *c, const char *str, size_t len)
 	quartz_Constants *list = c->constants;
 	size_t i = 0;
 	while(list) {
-		if(quartzI_strleql(list->str, list->strlen, str, len)) {
+		// empty names are simply never looked for
+		if(list->strlen > 0 && quartzI_strleql(list->str, list->strlen, str, len)) {
 			return c->constantsCount - i - 1;
 		}
 		list = list->next;
@@ -458,6 +459,75 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad operator parity: %u (line %u)", (quartz_Uint)node->childCount, (quartz_Uint)node->line);
 	}
 
+	if(node->type == QUARTZ_NODE_FUNCTION) {
+		size_t argc = node->childCount - 1;
+		quartz_Compiler sub;
+		err = quartzC_initCompiler(Q, &sub, c->source, c->globals, c->module);
+		if(err) return err;
+		sub.outer = c;
+		sub.argc = argc;
+		sub.funcflags = node->funcflags;
+		
+		for(size_t i = 0; i < argc; i++) {
+			quartz_Node *arg = node->children[i];
+			err = quartzC_defineLocal(&sub, arg->str, arg->strlen);
+			if(err) goto cleanup;
+		}
+
+		if(sub.funcflags & QUARTZ_FUNC_VARARGS) {
+			sub.argc--;
+			err = quartzC_writeInstruction(&sub, (quartz_Instruction) {
+				.op = QUARTZ_OP_VARARGPREP, 
+				.uD = sub.argc,
+				.line = node->line,
+			});
+			if(err) goto cleanup;
+		}
+
+		err = quartzC_runStatement(&sub, node->children[node->childCount - 1]);
+		if(err) goto cleanup;
+
+		err = quartzC_writeInstruction(&sub, (quartz_Instruction) {
+			.op = QUARTZ_OP_RET,
+			.A = 0,
+			.line = node->line,
+		});
+		if(err) goto cleanup;
+	
+		// for disassembly output to terminate
+		// as this terminates the function
+		err = quartzC_writeInstruction(&sub, (quartz_Instruction) {
+			.op = QUARTZ_OP_RETMOD,
+			.A = 0,
+			.line = node->line,
+		});
+		if(err) goto cleanup;
+
+		quartz_Function *f = quartzC_toFunctionAndFree(&sub);
+		if(f == NULL) {
+			err = quartz_oom(Q);
+			goto cleanup;
+		}
+
+		quartz_Value fc = {
+			.type = QUARTZ_VOBJ,
+			.obj = &f->obj,
+		};
+
+		size_t constID = c->constantsCount;
+		err = quartzC_addConstant(c, "", 0, fc);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_PUSHCONST,
+			.uD = constID,
+			.line = node->line,
+		});
+
+	cleanup:
+		quartzC_freeFailingCompiler(sub);
+		return err;
+	}
+
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad expression node: %u (line %u)", (quartz_Uint)node->type, (quartz_Uint)node->line);
 }
 
@@ -477,6 +547,16 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 			.line = node->line,
 		});
 		return QUARTZ_OK;
+	}
+
+	if(node->type == QUARTZ_NODE_RETURN) {
+		err = quartzC_pushChildArray(c, node);
+		if(err) return err;
+		return quartzC_writeInstruction(c, (quartz_Instruction) {
+			.op = QUARTZ_OP_RET,
+			.A = node->childCount,
+			.line = node->line,
+		});
 	}
 
 	if(node->type == QUARTZ_NODE_LOCAL) {
@@ -670,6 +750,8 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 
 quartz_Errno quartzC_compileProgram(quartz_Compiler *c, quartz_Node *tree) {
 	quartz_Errno err;
+
+	c->funcflags |= QUARTZ_FUNC_CHUNK;
 	
 	// TODO: prepend varargprep instruction
 	err = quartzC_writeInstruction(c, (quartz_Instruction) {

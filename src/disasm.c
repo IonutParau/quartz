@@ -125,13 +125,26 @@ quartz_OpDisInfo quartzI_disInfo[QUARTZ_VMOPS_COUNT] = {
 		.name = "iterjmp",
 		.args = QUARTZ_DISARG_sD_relrip,
 	},
+	[QUARTZ_OP_RET] = {
+		.name = "ret",
+		.args = QUARTZ_DISARG_A,
+	},
 };
 
 static quartz_Errno quartzDis_disassembleFunc(quartz_Thread *Q, quartz_Buffer *buf, quartz_Function *f) {
 	int curline = -1;
 	quartz_Errno err;
 
-	err = quartz_bufputf(buf, "%p(%u args, %u constants, %u upvalues, %u code):\n", f, (quartz_Uint)f->argc, (quartz_Uint)f->constCount, (quartz_Uint)f->upvalCount, (quartz_Uint)f->codesize);
+	for(size_t i = 0; i < f->constCount; i++) {
+		quartz_Value v = f->consts[i];
+		quartz_Function *f = quartzI_getFunction(v);
+		if(f != NULL) {
+			err = quartzDis_disassembleFunc(Q, buf, f);
+			if(err) return err;
+		}
+	}
+
+	err = quartz_bufputf(buf, "%p(%s, %s, %u args, %u constants, %u upvalues, %u code):\n", f, (f->flags & QUARTZ_FUNC_CHUNK) ? "main" : "func", (f->flags & QUARTZ_FUNC_VARARGS) ? "vararg" : "fixedarg", (quartz_Uint)f->argc, (quartz_Uint)f->constCount, (quartz_Uint)f->upvalCount, (quartz_Uint)f->codesize);
 	if(err) return quartz_erroras(Q, err);
 
 	if(f->flags & QUARTZ_FUNC_VARARGS) {

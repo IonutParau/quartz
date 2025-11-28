@@ -135,6 +135,116 @@ quartz_Errno quartzP_nextToken(quartz_Parser *p, quartz_Token *t) {
 	return QUARTZ_OK;
 }
 
+// as in, parse (...args) {...}
+static quartz_Errno quartzP_parseRestOfFunction(quartz_Parser *p, quartz_Node *parent) {
+	size_t l = p->curline;
+	quartz_Token t;
+	quartz_Errno err;
+
+	quartz_Node *func = quartzI_allocAST(p, QUARTZ_NODE_FUNCTION, l, "", 0);
+	if(func == NULL) return QUARTZ_ENOMEM;
+
+	func->funcflags = 0;
+
+	err = quartzI_addNodeChild(p->Q, parent, func);
+	if(err) return err;
+
+	err = quartzP_nextToken(p, &t);
+	if(err) return err;
+
+	if(t.s[0] != '(') {
+		p->pErr = QUARTZ_PARSE_EBADTOK;
+		p->tokExpected = "(";
+		p->errloc = p->curline;
+		return QUARTZ_ESYNTAX;
+	}
+
+	while(1) {
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		if(t.s[0] == ')') {
+			break;
+		}
+		
+		if(quartzI_strleqlc(t.s, t.len, "...")) {
+			func->funcflags |= QUARTZ_FUNC_VARARGS;
+			
+			err = quartzP_nextToken(p, &t);
+			if(err) return err;
+		
+			if(t.tt != QUARTZ_TOK_IDENT) {
+				p->pErr = QUARTZ_PARSE_EBADTOK;
+				p->tokExpected = "<identifier>";
+				p->errloc = p->curline;
+				return QUARTZ_ESYNTAX;
+			}
+		
+			quartz_Node *param = quartzI_allocAST(p, QUARTZ_NODE_VARIABLE, p->curline, t.s, t.len);
+			if(param == NULL) return QUARTZ_ENOMEM;
+		
+			err = quartzI_addNodeChild(p->Q, func, param);
+			if(err) return err;
+
+			err = quartzP_nextToken(p, &t);
+			if(err) return err;
+
+			if(t.s[0] == ')') break;
+			p->pErr = QUARTZ_PARSE_EBADTOK;
+			p->tokExpected = ")";
+			p->errloc = p->curline;
+			return QUARTZ_ESYNTAX;
+		}
+
+		if(t.tt != QUARTZ_TOK_IDENT) {
+			p->pErr = QUARTZ_PARSE_EBADTOK;
+			p->tokExpected = "<identifier>";
+			p->errloc = p->curline;
+			return QUARTZ_ESYNTAX;
+		}
+
+		quartz_Node *param = quartzI_allocAST(p, QUARTZ_NODE_VARIABLE, p->curline, t.s, t.len);
+		if(param == NULL) return QUARTZ_ENOMEM;
+
+		err = quartzI_addNodeChild(p->Q, func, param);
+		if(err) return err;
+		
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		if(t.s[0] == ')') {
+			break;
+		} else if(t.s[0] == ',') {
+			continue;
+		}
+		p->pErr = QUARTZ_PARSE_EBADTOK;
+		p->tokExpected = ") or ,";
+		p->errloc = p->curline;
+		return QUARTZ_ESYNTAX;
+	}
+	
+	err = quartzP_nextToken(p, &t);
+	if(err) return err;
+
+	if(t.s[0] != '{') {
+		p->pErr = QUARTZ_PARSE_EBADTOK;
+		p->tokExpected = "{";
+		p->errloc = p->curline;
+		return QUARTZ_ESYNTAX;
+	}
+
+	quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
+	if(block == NULL) return QUARTZ_ENOMEM;
+
+	err = quartzI_addNodeChild(p->Q, func, block);
+	if(err) return err;
+
+	err = quartzP_parseStatementBlock(p, block, 0);
+	if(err) return err;
+
+	return QUARTZ_OK;
+}
+
 quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) {
 	size_t l = p->curline;
 	quartz_Token t;
@@ -280,6 +390,10 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 
 	ident_done:
 		return quartzI_addNodeChild(p->Q, parent, node);
+	}
+
+	if(quartzI_strleqlc(t.s, t.len, "fun")) {
+		return quartzP_parseRestOfFunction(p, parent);
 	}
 	
 	if(t.s[0] == '[') {
@@ -434,6 +548,26 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 	err = quartzP_peekToken(p, &t);
 	if(err) return err;
 
+	if(quartzI_strleqlc(t.s, t.len, "return")) {
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		err = quartzP_peekToken(p, &t);
+		if(err) return err;
+
+		quartz_Node *node = quartzI_allocAST(p, QUARTZ_NODE_RETURN, l, "", 0);
+		if(node == NULL) return QUARTZ_ENOMEM;
+
+		err = quartzI_addNodeChild(p->Q, parent, node);
+		if(err) return err;
+
+		if(t.tt == QUARTZ_TOK_EOF || t.s[0] == '}') {
+			return QUARTZ_OK;
+		}
+
+		return quartzP_parseExpression(p, node);
+	}
+
 	if(quartzI_strleqlc(t.s, t.len, "local")) {
 		err = quartzP_nextToken(p, &t);
 		if(err) return err;
@@ -521,6 +655,8 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		}
 
 		quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
+		if(block == NULL) return QUARTZ_ENOMEM;
+
 		err = quartzI_addNodeChild(p->Q, node, block);
 		if(err) return err;
 
@@ -528,6 +664,19 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		if(err) return err;
 
 		return quartzI_addNodeChild(p->Q, parent, node);
+	}
+
+	if(t.s[0] == '{') {
+		err = quartzP_nextToken(p, &t);
+		if(err) return err;
+
+		quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
+		if(block == NULL) return QUARTZ_ENOMEM;
+
+		err = quartzP_parseStatementBlock(p, block, 0);
+		if(err) return err;
+
+		return quartzI_addNodeChild(p->Q, parent, block);
 	}
 	
 	if(quartzI_strleqlc(t.s, t.len, "while")) {

@@ -40,6 +40,7 @@ const char *quartzI_lexSymbols[] = {
 	// 3-char
 	"<<<",
 	">>>",
+	"...",
 	// 2-char
 	"==",
 	"!=",

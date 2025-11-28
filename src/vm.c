@@ -257,6 +257,12 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 				continue;
 			}
 			// iter not over, do nothing
+		} else if(pc->op == QUARTZ_OP_RET) {
+			if(pc->A == 0) {
+				goto done;
+			}
+			err = quartz_return(Q, -1);
+			goto done;
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;
