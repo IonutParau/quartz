@@ -509,6 +509,8 @@ quartz_Errno quartzP_parseExpressionPratt(quartz_Parser *p, quartz_Node *parent,
 		size_t left, right;
 		if(!quartzP_binOpBp(t.s, t.len, &left, &right)) break;
 
+		if(left < minBp) break;
+
 		err = quartzP_nextToken(p, &t);
 		if(err) return err;
 
@@ -522,9 +524,7 @@ quartz_Errno quartzP_parseExpressionPratt(quartz_Parser *p, quartz_Node *parent,
 		quartz_Node *leftNode = quartzI_popChild(parent);
 
 		err = quartzI_addNodeChild(p->Q, opNode, leftNode);
-		if(err) {
-			return err;
-		}
+		if(err) return err;
 		err = quartzI_addNodeChild(p->Q, opNode, rightNode);
 		if(err) return err;
 
