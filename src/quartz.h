@@ -385,8 +385,8 @@ quartz_Errno quartz_pushscript(quartz_Thread *Q, const char *code, const char *s
 // uses the default globals
 quartz_Errno quartz_pushlscript(quartz_Thread *Q, const char *code, size_t codelen, const char *src, size_t srclen);
 // Pushes a Quartz function which executes the script.
-// code, source, and globals are stack indexes to values. They should be a string, string and map.
-quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals);
+// code, source, and globals are stack indexes to values. They should be a string, string, map and map.
+quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals, int module);
 quartz_Errno quartz_pushmap(quartz_Thread *Q);
 quartz_Errno quartz_pushmapx(quartz_Thread *Q, size_t cap);
 quartz_Errno quartz_pushlist(quartz_Thread *Q, size_t len);

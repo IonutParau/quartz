@@ -68,6 +68,19 @@ static quartz_Errno quartz_libbuf_tostring(quartz_Thread *Q, size_t argc) {
 	return quartz_return(Q, -1);
 }
 
+static quartz_Errno quartz_libbuf_reserve(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	quartz_Buffer *buf = quartz_touserdata(Q, 0, quartz_libbuf_typestr, &err);
+	if(err) return err;
+	quartz_Int n = quartz_tointeger(Q, 1, &err);
+	char *m = quartz_bufreserve(buf, n);
+	if(m == NULL) return quartz_oom(Q);
+	if(err) return err;
+	err = quartz_pushint(Q, buf->cap);
+	if(err) return err;
+	return quartz_return(Q, -1);
+}
+
 static quartz_Errno quartz_libbuf_putc(quartz_Thread *Q, size_t argc) {
 	quartz_Errno err = QUARTZ_OK;
 	quartz_Buffer *buf = quartz_touserdata(Q, 0, quartz_libbuf_typestr, &err);

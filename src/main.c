@@ -28,11 +28,24 @@ static void printVersionAndCopyright() {
 static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
 	quartz_Errno err;
 	const char *src = "(stdin)";
-	size_t srclen = strlen(src);
 	quartz_Buffer linebuf;
 	err = quartz_bufinit(Q, &linebuf, 128);
 	if(err) return err;
+	err = quartz_setstacksize(Q, 0);
+	if(err) return err;
+	// shared module
+	int sharedModule = 0;
+	int globals = 1;
+	int chunkname = 2;
+	err = quartz_pushmap(Q);
+	if(err) return err;
+	err = quartz_pushglobals(Q);
+	if(err) return err;
+	err = quartz_pushstring(Q, src);
+	if(err) return err;
 	while(!feof(stdin)) {
+		err = quartz_setstacksize(Q, 3);
+		if(err) return err;
 		quartz_bufreset(&linebuf);
 		fputs("> ", stdout);
 		fflush(stdout);
@@ -46,22 +59,34 @@ static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
 			if(err) return err;
 		}
 		if(linebuf.len > 0) {
-			err = quartz_pushlscript(Q, linebuf.buf, linebuf.len, src, srclen);
+			err = quartz_pushlstring(Q, linebuf.buf, linebuf.len);
 			if(err) return err;
-			if(disassemble) {
-				quartz_bufreset(&linebuf);
-				err = quartz_disassemble(Q, -1, &linebuf);
+			err = quartz_pushscriptx(Q, -1, chunkname, globals, sharedModule);
+			if(err) {
+				err = quartz_pusherror(Q);
 				if(err) return err;
-				err = quartz_pop(Q);
+				err = quartz_cast(Q, -1, QUARTZ_TSTR);
 				if(err) return err;
-				fwrite(linebuf.buf, sizeof(char), linebuf.len, stdout);
-				fflush(stdout);
+				const char *s = quartz_tostring(Q, -1, &err);
+				if(err) return err;
+				printf("Error: %s\n", s);
+				quartz_clearerror(Q);
 			} else {
-				err = quartz_pushlstring(Q, src, srclen);
-				if(err) return err;
-				// not protected, L
-				err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-				if(err) return err;
+				if(disassemble) {
+					quartz_bufreset(&linebuf);
+					err = quartz_disassemble(Q, -1, &linebuf);
+					if(err) return err;
+					err = quartz_pop(Q);
+					if(err) return err;
+					fwrite(linebuf.buf, sizeof(char), linebuf.len, stdout);
+					fflush(stdout);
+				} else {
+					err = quartz_pushstring(Q, src);
+					if(err) return err;
+					// not protected, L
+					err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+					if(err) return err;
+				}
 			}
 		}
 	}

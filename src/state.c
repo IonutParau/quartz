@@ -566,7 +566,7 @@ quartz_Errno quartz_pushscript(quartz_Thread *Q, const char *code, const char *s
 	return quartz_pushlscript(Q, code, quartzI_strlen(code), src, quartzI_strlen(src));
 }
 
-static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code, quartz_String *src, quartz_Map *globals) {
+static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code, quartz_String *src, quartz_Map *globals, quartz_Map *module) {
 	quartz_Errno err;
 	quartz_Compiler c;
 	quartz_Parser p;
@@ -592,7 +592,7 @@ static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code,
 		}
 		return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown parser error");
 	}
-	err = quartzC_initCompiler(Q, &c);
+	err = quartzC_initCompiler(Q, &c, src, globals, module);
 	if(err) {
 		quartzP_freeParser(&p);
 		return err;
@@ -603,7 +603,7 @@ static quartz_Errno quartzI_pushscriptraw(quartz_Thread *Q, quartz_String *code,
 		quartzC_freeFailingCompiler(c);
 		return err;
 	}
-	quartz_Function *f = quartzC_toFunctionAndFree(&c, src, globals);
+	quartz_Function *f = quartzC_toFunctionAndFree(&c);
 	if(f == NULL) {
 		quartzC_freeFailingCompiler(c);
 		return quartz_oom(Q);
@@ -621,10 +621,12 @@ quartz_Errno quartz_pushlscript(quartz_Thread *Q, const char *code, size_t codel
 	if(codeObj == NULL) return quartz_oom(Q);
 	quartz_String *srcObj = quartzI_newString(Q, srclen, src);
 	if(srcObj == NULL) return quartz_oom(Q);
-	return quartzI_pushscriptraw(Q, codeObj, srcObj, Q->gState->globals);
+	quartz_Map *module = quartzI_newMap(Q, 0);
+	if(module == NULL) return quartz_oom(Q);
+	return quartzI_pushscriptraw(Q, codeObj, srcObj, Q->gState->globals, module);
 }
 
-quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals) {
+quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int globals, int module) {
 	quartz_Errno err;
 
 	err = quartz_typeassert(Q, code, QUARTZ_TSTR);	
@@ -633,11 +635,14 @@ quartz_Errno quartz_pushscriptx(quartz_Thread *Q, int code, int source, int glob
 	if(err) return err;
 	err = quartz_typeassert(Q, globals, QUARTZ_TMAP);	
 	if(err) return err;
+	err = quartz_typeassert(Q, module, QUARTZ_TMAP);	
+	if(err) return err;
 
 	quartz_String *codeObj = (quartz_String *)quartzI_getStackValue(Q, code).obj;
 	quartz_String *srcObj = (quartz_String *)quartzI_getStackValue(Q, source).obj;
 	quartz_Map *globalsObj = (quartz_Map *)quartzI_getStackValue(Q, globals).obj;
-	return quartzI_pushscriptraw(Q, codeObj, srcObj, globalsObj);
+	quartz_Map *moduleObj = (quartz_Map *)quartzI_getStackValue(Q, module).obj;
+	return quartzI_pushscriptraw(Q, codeObj, srcObj, globalsObj, moduleObj);
 }
 
 static quartz_Errno quartzI_pushRawMap(quartz_Thread *Q, quartz_Map *map) {

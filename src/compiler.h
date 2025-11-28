@@ -41,6 +41,9 @@ typedef struct quartz_Compiler {
 	quartz_Thread *Q;
 	// for outer->scope and outer->constants
 	struct quartz_Compiler *outer;
+	quartz_String *source;
+	quartz_Map *globals;
+	quartz_Map *module;
 	quartz_Local *localList;
 	quartz_UpvalDesc *upvalList;
 	quartz_Constants *constants;
@@ -66,9 +69,9 @@ typedef struct quartz_Variable {
 	int index;
 } quartz_Variable;
 
-quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c);
+quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c, quartz_String *source, quartz_Map *globals, quartz_Map *module);
 void quartzC_freeFailingCompiler(quartz_Compiler c);
-quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *source, quartz_Map *globals);
+quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c);
 size_t quartzC_countConstants(quartz_Compiler *c);
 
 quartz_Errno quartzC_writeInstruction(quartz_Compiler *c, quartz_Instruction inst);

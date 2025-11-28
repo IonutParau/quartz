@@ -44,7 +44,7 @@ static quartz_Errno quartzC_getBinOp(quartz_Thread *Q, const char *str, size_t l
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "unknown operator: %z", len, str);
 }
 
-quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c) {
+quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c, quartz_String *source, quartz_Map *globals, quartz_Map *module) {
 	quartz_Errno err;
 	c->Q = Q;
 	c->outer = NULL;
@@ -59,6 +59,10 @@ quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c) {
 	c->argc = 0;
 	c->funcflags = 0;
 	c->codesize = 0;
+
+	c->source = source;
+	c->globals = globals;
+	c->module = module;
 
 	c->codecap = 256;
 	c->code = quartz_alloc(Q, sizeof(quartz_Instruction) * c->codecap);
@@ -89,7 +93,7 @@ static quartz_Constants *quartzC_getConstants(quartz_Compiler *c) {
 	return c->constants;
 }
 
-quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *source, quartz_Map *globals) {
+quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c) {
 	// TODO: handle OOM better
 	quartz_Thread *Q = c->Q;
 
@@ -107,10 +111,9 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *so
 		consts[constCount - i - 1] = curConst->val;
 	}
 
-	quartz_Map *module = quartzI_newMap(Q, 0);
 	quartz_Function *f = (quartz_Function *)quartzI_allocObject(Q, QUARTZ_OFUNCTION, sizeof(quartz_Function));
-	f->module = module;
-	f->globals = globals;
+	f->module = c->module;
+	f->globals = c->globals;
 	// TODO: preallocate
 	f->stacksize = 0;
 	f->argc = c->argc;
@@ -121,7 +124,7 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c, quartz_String *so
 		f->code[i].line = 0;
 	}
 	f->codesize = c->codecap;
-	f->chunkname = source;
+	f->chunkname = c->source;
 	f->constCount = constCount;
 	f->upvalCount = c->upvalc;
 	// gosh darn constants

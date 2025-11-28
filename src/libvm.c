@@ -38,7 +38,12 @@ static quartz_Errno quartz_libvm_load(quartz_Thread *Q, size_t argc) {
 		err = quartz_pushglobals(Q);
 		if(err) return err;
 	}
-	err = quartz_pushscriptx(Q, 0, 1, 2);
+	if(quartz_getstacksize(Q) == 3) {
+		// code, name and globals specified, but no module
+		err = quartz_pushmap(Q);
+		if(err) return err;
+	}
+	err = quartz_pushscriptx(Q, 0, 1, 2, 3);
 	if(err) return err;
 	return quartz_return(Q, -1);
 }
