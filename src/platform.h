@@ -47,7 +47,7 @@
 
 #ifndef QUARTZ_BITSPERUNIT
 #ifdef __CHAR_BIT__
-	#define QUARTZ_BITSPERUNIT __CHAR_BIT__
+	#define QUARTZ_BITSPERUNIT (__CHAR_BIT__ / sizeof(char))
 #else
 	// assume bytes
 	#define QUARTZ_BITSPERUNIT 8

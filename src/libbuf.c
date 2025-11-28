@@ -72,9 +72,11 @@ static quartz_Errno quartz_libbuf_reserve(quartz_Thread *Q, size_t argc) {
 	quartz_Errno err = QUARTZ_OK;
 	quartz_Buffer *buf = quartz_touserdata(Q, 0, quartz_libbuf_typestr, &err);
 	if(err) return err;
+	size_t oldLen = buf->len;
 	quartz_Int n = quartz_tointeger(Q, 1, &err);
 	char *m = quartz_bufreserve(buf, n);
 	if(m == NULL) return quartz_oom(Q);
+	buf->len = oldLen;
 	if(err) return err;
 	err = quartz_pushint(Q, buf->cap);
 	if(err) return err;
@@ -94,6 +96,23 @@ static quartz_Errno quartz_libbuf_putc(quartz_Thread *Q, size_t argc) {
 		err = quartz_bufputc(buf, c);
 		if(err) return err;
 	}
+	return QUARTZ_OK;
+}
+
+static quartz_Errno quartz_libbuf_putcr(quartz_Thread *Q, size_t argc) {
+	quartz_Errno err = QUARTZ_OK;
+	quartz_Buffer *buf = quartz_touserdata(Q, 0, quartz_libbuf_typestr, &err);
+	if(err) return err;
+	quartz_Int d = quartz_tointeger(Q, 1, &err);
+	if(err) return err;
+	quartz_Int n = quartz_tointeger(Q, 2, &err);
+	if(err) return err;
+	if(n <= 0) return QUARTZ_OK;
+	unsigned char c = d;
+	err = quartz_assertf(Q, d == c, QUARTZ_ERUNTIME, "internal overflow: %d -> %u", d, (quartz_Uint)c);
+	if(err) return err;
+	err = quartz_bufputcr(buf, c, n);
+	if(err) return err;
 	return QUARTZ_OK;
 }
 
@@ -121,7 +140,9 @@ quartz_Errno quartz_openlibbuf(quartz_Thread *Q) {
 		{"len", quartz_libbuf_len},
 		{"cap", quartz_libbuf_cap},
 		{"putc", quartz_libbuf_putc},
+		{"putcr", quartz_libbuf_putcr},
 		{"puts", quartz_libbuf_puts},
+		{"reserve", quartz_libbuf_reserve},
 
 		{NULL, NULL},
 	};

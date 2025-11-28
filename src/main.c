@@ -43,6 +43,14 @@ static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
 	if(err) return err;
 	err = quartz_pushstring(Q, src);
 	if(err) return err;
+	err = quartz_pushvalue(Q, sharedModule);
+	if(err) return err;
+	err = quartz_pushstring(Q, "_M");
+	if(err) return err;
+	err = quartz_pushvalue(Q, sharedModule);
+	if(err) return err;
+	err = quartz_setindex(Q);
+	if(err) return err;
 	while(!feof(stdin)) {
 		err = quartz_setstacksize(Q, 3);
 		if(err) return err;

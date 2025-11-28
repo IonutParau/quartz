@@ -82,6 +82,18 @@ quartz_Errno quartz_openlibcore(quartz_Thread *Q) {
 	if(err) return err;
 	quartz_pop(Q);
 	
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT * sizeof(char));
+	if(err) return err;
+	err = quartz_setglobal(Q, "_CHARBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+
+	err = quartz_pushint(Q, QUARTZ_BITSPERUNIT);
+	if(err) return err;
+	err = quartz_setglobal(Q, "_UNITBITS", -1);
+	if(err) return err;
+	quartz_pop(Q);
+	
 	err = quartz_pushstring(Q, quartz_platform());
 	if(err) return err;
 	err = quartz_setglobal(Q, "_PLATFORM", -1);
