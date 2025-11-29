@@ -30,6 +30,9 @@ bool quartzI_strleql(const char *a, size_t alen, const char *b, size_t blen) {
 
 bool quartzI_strleqlc(const char *a, size_t alen, const char *b) {
 	for(size_t i = 0; i < alen; i++) {
+		// this 1 if statement saves us from a potential memory scan attack
+		if(b[i] == '\0') return false;
+
 		if(a[i] != b[i]) return false;
 	}
 	return b[alen] == '\0';
