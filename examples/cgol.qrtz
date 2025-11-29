@@ -17,25 +17,28 @@ height = 32
 
 io.writeln("funcs")
 
-inside = fun(x, y) {
-	if x < 0 { return false }
-	if y < 0 { return false }
-	if x >= width { return false }
-	if y >= height { return false }
-	return true
+wrap = fun(x, n) {
+	while x >= n {
+		x = x - n
+	}
+	while x < 0 {
+		x = x + n
+	}
+	return x
 }
 
 get = fun(x, y) {
-	if inside(x, y) {
-		return data[x + (y * width)]
-	}
-	return false
+	x = wrap(x, width)
+	y = wrap(y, height)
+
+	return data[x + (y * width)]
 }
 
 set = fun(x, y, val) {
-	if inside(x, y) {
-		data[x + (y * width)] = val
-	}
+	x = wrap(x, width)
+	y = wrap(y, height)
+
+	data[x + (y * width)] = val
 }
 
 gen = 0
@@ -48,7 +51,7 @@ render = fun() {
 			io.write("=")
 			i = i + 1
 		}
-		io.writeln(gen)
+		io.writeln(gen, " (", gc.count(), " / ", gc.peak(), ")")
 	}
 	while y < height {
 		local x = 0
@@ -109,28 +112,38 @@ update = fun() {
 	data = newData
 }
 
+placeAcorn = fun(x, y) {
+	set(x, y, true)
+
+	set(x+1, y+1, true)
+	set(x+2, y+1, true)
+	set(x+3, y+1, true)
+
+	set(x-2, y-1, true)
+	set(x-2, y+1, true)
+	set(x-3, y+1, true)
+}
+
 io.writeln("setup")
 local cx = width//2
 local cy = height//2
 
-# acorn
-
-set(cx, cy, true)
-
-set(cx+1, cy+1, true)
-set(cx+2, cy+1, true)
-set(cx+3, cy+1, true)
-
-set(cx-2, cy-1, true)
-set(cx-2, cy+1, true)
-set(cx-3, cy+1, true)
+# seed
+placeAcorn(cx, cy)
+placeAcorn(cx+5, cy+10)
+placeAcorn(cx-10, cy-2)
+placeAcorn(cx, cy+15)
 
 io.writeln("gens (", width, " x ", height, ")")
 
-local runs = 200
+local runs = 1000
 
 while gen < runs {
 	gen = gen + 1
+
+	if gen == (runs / 2) {
+		placeAcorn(cx-16, cy+17)
+	}
 
 	# so we can have a benchmark mode
 	if len(argv) == 1 {
