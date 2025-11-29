@@ -13,16 +13,8 @@ size_t quartz_gcCount(quartz_Thread *Q) {
 	return Q->gState->gcCount;
 }
 
-size_t quartz_gcTarget(quartz_Thread *Q) {
-	return Q->gState->gcTarget;
-}
-
 size_t quartz_gcPeak(quartz_Thread *Q) {
 	return Q->gState->gcPeak;
-}
-
-double quartz_gcRatio(quartz_Thread *Q, double ratio) {
-	return Q->gState->gcRatio;
 }
 
 static void quartz_grayValue(quartz_Thread *Q, quartz_Value value);

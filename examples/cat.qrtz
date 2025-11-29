@@ -1,0 +1,21 @@
+if len(argv) == 1 {
+	while true {
+		local line = io.read("l")
+		if line == null { return }
+		io.write(line)
+		io.flush()
+	}
+	return
+}
+
+local path = argv[1]
+
+local f = fs.open(path, "r")
+
+local chunksize = 8192
+while true {
+	local chunk = fs.read(f, 8192)
+	if chunk == null { return }
+	io.write(chunk)
+	io.flush()
+}

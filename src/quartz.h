@@ -225,6 +225,7 @@ const char *quartz_platform();
 quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
+quartz_Errno quartz_openlibfs(quartz_Thread *Q);
 quartz_Errno quartz_openlibgc(quartz_Thread *Q);
 quartz_Errno quartz_openlibvm(quartz_Thread *Q);
 quartz_Errno quartz_openlibbuf(quartz_Thread *Q);
@@ -232,14 +233,8 @@ quartz_Errno quartz_openlibbuf(quartz_Thread *Q);
 // The current managed memory usage
 size_t quartz_gcCount(quartz_Thread *Q);
 
-// The memory at which GC will trigger
-size_t quartz_gcTarget(quartz_Thread *Q);
-
 // peak memory usage
 size_t quartz_gcPeak(quartz_Thread *Q);
-
-// set it to 0 to leave it unchanged
-double quartz_gcRatio(quartz_Thread *Q, double ratio);
 
 // Objects created are put in the "temporary ring", which means they can not be freed.
 // This is so if C code has any pointers to them, they won't become dangling.
@@ -320,6 +315,9 @@ void quartz_bufcpy(quartz_Buffer *buf, char *s);
 char *quartz_bufstr(quartz_Buffer *buf, size_t *len);
 void quartz_bufshrinkto(quartz_Buffer *buf, size_t len);
 void quartz_bufreset(quartz_Buffer *buf);
+
+quartz_Errno quartz_freadline(quartz_Thread *Q, quartz_File *f, quartz_Buffer *buf);
+quartz_Errno quartz_freadall(quartz_Thread *Q, quartz_File *f, quartz_Buffer *buf);
 
 // clear error object
 void quartz_clearerror(quartz_Thread *Q);

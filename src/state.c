@@ -955,6 +955,7 @@ quartz_Errno quartz_getglobal(quartz_Thread *Q, const char *global) {
 	key.type = QUARTZ_VOBJ;
 	quartz_String *s = quartzI_newCString(Q, global);
 	if(s == NULL) return quartz_oom(Q);
+	key.obj = &s->obj;
 	quartz_Value v = quartzI_mapGet(Q->gState->globals, key);
 	return quartzI_pushRawValue(Q, v);
 }
@@ -975,6 +976,7 @@ quartz_Errno quartz_getloaded(quartz_Thread *Q, const char *global) {
 	key.type = QUARTZ_VOBJ;
 	quartz_String *s = quartzI_newCString(Q, global);
 	if(s == NULL) return quartz_oom(Q);
+	key.obj = &s->obj;
 	quartz_Value v = quartzI_mapGet(Q->gState->loaded, key);
 	return quartzI_pushRawValue(Q, v);
 }
@@ -995,6 +997,7 @@ quartz_Errno quartz_getregistry(quartz_Thread *Q, const char *var) {
 	key.type = QUARTZ_VOBJ;
 	quartz_String *s = quartzI_newCString(Q, var);
 	if(s == NULL) return quartz_oom(Q);
+	key.obj = &s->obj;
 	quartz_Value v = quartzI_mapGet(Q->gState->globals, key);
 	return quartzI_pushRawValue(Q, v);
 }
@@ -1749,6 +1752,10 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
 	quartz_Value v = quartzI_getStackValue(Q, x);
 	if(v.type == QUARTZ_VOBJ) {
 		quartz_Object *o = v.obj;
+		if(o->type == QUARTZ_OSTR) {
+			quartz_String *s = (quartz_String *)o;
+			return s->len;
+		}
 		if(o->type == QUARTZ_OLIST) {
 			quartz_List *l = (quartz_List *)o;
 			return l->len;
@@ -1772,7 +1779,7 @@ size_t quartz_len(quartz_Thread *Q, int x, quartz_Errno *err) {
 			return len;
 		}
 	}
-	*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "container expected, got %s", quartz_typenameof(Q, x));
+	*err = quartz_errorf(Q, QUARTZ_ERUNTIME, "container or string expected, got %s", quartz_typenameof(Q, x));
 	return 0;
 }
 

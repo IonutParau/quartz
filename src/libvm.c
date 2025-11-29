@@ -73,7 +73,7 @@ static quartz_Errno quartz_libvm_stacktrace(quartz_Thread *Q, size_t argc) {
 	if(err) goto cleanup;
 	quartz_CallInfo info;
 	size_t depth = quartz_callDepth(Q);
-	for(size_t i = quartz_checkerror(Q) ? 2 : 1; i < depth; i++) {
+	for(size_t i = 1; i < depth; i++) {
 		err = quartz_requestCallInfo(Q, i, QUARTZ_CALLREQ_SOURCE, &info);
 		if(err) goto cleanup;
 		size_t len;

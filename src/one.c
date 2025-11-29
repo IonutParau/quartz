@@ -15,8 +15,10 @@
 #include "compiler.c"
 // libraries
 #include "libs.c"
+#include "filedesc.c"
 #include "libcore.c"
 #include "libio.c"
+#include "libfs.c"
 #include "libgc.c"
 #include "libvm.c"
 #include "libbuf.c"

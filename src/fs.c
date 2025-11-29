@@ -99,6 +99,7 @@ quartz_Errno quartz_fwrite(quartz_Thread *Q, quartz_File *f, const void *buf, si
 	return QUARTZ_OK;
 }
 
+// returns if EoF
 static bool quartzI_fgetc(quartz_Thread *Q, quartz_File *f, char *buf, quartz_Errno *err) {
 	quartz_Context ctx = Q->gState->context;
 	if(f->bufcursor == f->buflen) {
@@ -117,7 +118,7 @@ static bool quartzI_fgetc(quartz_Thread *Q, quartz_File *f, char *buf, quartz_Er
 			return true;
 		}
 	}
-	*buf = f->buf[f->buflen++];
+	*buf = f->buf[f->bufcursor++];
 	*err = QUARTZ_OK;
 	return false;
 }
@@ -136,9 +137,10 @@ quartz_Errno quartz_fread(quartz_Thread *Q, quartz_File *f, void *buf, size_t *b
 	for(size_t i = 0; i < requested; i++) {
 		quartz_Errno err;
 		if(quartzI_fgetc(Q, f, buf + i, &err)) {
-			*buflen = written;
+			written = i;
 			break;
 		}
+		if(err) return err;
 	}
 	*buflen = written;
 	return QUARTZ_OK;
@@ -169,8 +171,10 @@ quartz_Errno quartz_fflush(quartz_Thread *Q, quartz_File *f) {
 }
 
 quartz_Errno quartz_fsetvbuf(quartz_Thread *Q, quartz_File *f, quartz_FsBufMode bufMode, size_t size) {
-	quartz_Errno err = quartz_fflush(Q, f);
-	if(err) return err;
+	if((f->fMode & QUARTZ_FILE_READABLE) == 0) {
+		quartz_Errno err = quartz_fflush(Q, f);
+		if(err) return err;
+	}
 	f->bufMode = bufMode;
 	if(size == 0) size = f->bufsize;
 	if(size != f->bufsize) {
@@ -209,5 +213,44 @@ quartz_Errno quartz_fopenstdio(quartz_Thread *Q) {
 	if(err) return err;
 	err = quartz_fopenstdfile(Q, QUARTZ_FILE_WRITABLE, QUARTZ_STDERR);
 	if(err) return err;
+
+	quartz_File *_stdin = quartz_fstdfile(Q, QUARTZ_STDIN);
+	err = quartz_fsetvbuf(Q, _stdin, QUARTZ_FS_NOBUF, 0);
+	if(err) return err;
+
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_freadline(quartz_Thread *Q, quartz_File *f, quartz_Buffer *buf) {
+	quartz_Errno err = QUARTZ_OK;
+
+	while(true) {
+		char b;
+		size_t len = 1;
+		err = quartz_fread(Q, f, &b, &len);
+		if(err) return err;
+		if(len == 0) break;
+		err = quartz_bufputc(buf, b);
+		if(err) return err;
+		if(b == '\n') break;
+	}
+
+	return QUARTZ_OK;
+}
+
+quartz_Errno quartz_freadall(quartz_Thread *Q, quartz_File *f, quartz_Buffer *buf) {
+	quartz_Errno err = QUARTZ_OK;
+	char cbuf[1024];
+	size_t bufsize = sizeof(cbuf);
+
+	while(true) {
+		size_t len = bufsize;
+		err = quartz_fread(Q, f, cbuf, &len);
+		if(err) return err;
+		if(len == 0) break;
+		err = quartz_bufputls(buf, cbuf, len);
+		if(err) return err;
+	}
+
 	return QUARTZ_OK;
 }

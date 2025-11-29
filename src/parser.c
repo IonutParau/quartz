@@ -314,7 +314,7 @@ quartz_Errno quartzP_parseExpressionBase(quartz_Parser *p, quartz_Node *parent) 
 					return err;
 				}
 
-				quartz_Node *index = quartzI_allocAST(p, QUARTZ_NODE_INDEX, l, t.s, t.len);
+				quartz_Node *index = quartzI_allocAST(p, QUARTZ_NODE_INDEX, p->curline, t.s, t.len);
 				err = quartzI_addNodeChild(p->Q, index, node);
 				if(err) return err;
 				

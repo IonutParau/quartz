@@ -51,8 +51,8 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		if(fmode & QUARTZ_FILE_BINARY) mode[1] = 'b';
 
 		FILE *f = fopen(buf, mode);
-		*buflen = fwrite(buf, 1, *buflen, f);
-		// we could check by length but doing so is weird
+		setvbuf(f, NULL, _IONBF, 0);
+		*(FILE **)fileData = f;
 		return QUARTZ_OK;
 	}
 	if(action == QUARTZ_FS_CLOSE) {
@@ -64,11 +64,13 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 	}
 	if(action == QUARTZ_FS_READ) {
 		FILE *f = *(FILE **)fileData;
-		if(feof(f)) {
-			*buflen = 0;
-			return QUARTZ_OK;
+		size_t written = 0;
+		size_t toRead = *buflen;
+		while(written < toRead) {
+			if(feof(f)) break;
+			written += fread(buf + written, 1, toRead - written, f);
 		}
-		*buflen = fread(buf, 1, *buflen, f);
+		*buflen = written;
 		return QUARTZ_OK;
 	}
 	if(action == QUARTZ_FS_WRITE) {
