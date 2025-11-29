@@ -1062,6 +1062,7 @@ quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
 				.type = QUARTZ_VINT,
 				.integer = n,
 			});
+			return QUARTZ_OK;
 		}
 		if(t == QUARTZ_TCOMPLEX) {
 			quartz_Complex c = quartz_tocomplex(Q, x, &err);
@@ -1070,6 +1071,27 @@ quartz_Errno quartz_cast(quartz_Thread *Q, int x, quartz_Type result) {
 				.type = QUARTZ_VINT,
 				.integer = c.real,
 			});
+			return QUARTZ_OK;
+		}
+	}
+	if(result == QUARTZ_TREAL) {
+		if(t == QUARTZ_TINT) {
+			double n = quartz_tointeger(Q, x, &err);
+			if(err) return err;
+			quartzI_setStackValue(Q, x, (quartz_Value) {
+				.type = QUARTZ_VNUM,
+				.real = n,
+			});
+			return QUARTZ_OK;
+		}
+		if(t == QUARTZ_TCOMPLEX) {
+			quartz_Complex c = quartz_tocomplex(Q, x, &err);
+			if(err) return err;
+			quartzI_setStackValue(Q, x, (quartz_Value) {
+				.type = QUARTZ_VNUM,
+				.real = c.real,
+			});
+			return QUARTZ_OK;
 		}
 	}
 	return quartz_errorf(Q, QUARTZ_ERUNTIME, "bad cast from %s to %s", quartz_typenames[t], quartz_typenames[result]);
@@ -1487,6 +1509,10 @@ quartz_Errno quartz_binop(quartz_Thread *Q, quartz_BinOp op) {
 		return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid / operand types %s and %s ", quartz_typenames[atype], quartz_typenames[btype]);
 	}
 	if(op == QUARTZ_BINOP_IDIV) {
+		err = quartz_cast(Q, -2, QUARTZ_TINT);
+		if(err) return err;
+		err = quartz_cast(Q, -1, QUARTZ_TINT);
+		if(err) return err;
 		quartz_Int a = quartz_tointeger(Q, -2, &err);
 		if(err) return err;
 		quartz_Int b = quartz_tointeger(Q, -1, &err);

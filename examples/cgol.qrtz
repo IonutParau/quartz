@@ -44,6 +44,24 @@ set = fun(x, y, val) {
 gen = 0
 runs = 1000
 
+units = ["B", "KiB", "MiB", "GiB", "TiB"]
+
+formatMem = fun(x) {
+	local unit = 0
+
+	# theoretical out of bounds error
+	# dont care
+	while x >= 1024 {
+		x = x / 1024
+		unit = unit + 1
+	}
+
+	x = x * 100
+	x = x // 100
+
+	return x .. units[unit] 
+}
+
 render = fun() {
 	# term escape to clear line
 	io.write("\e[0K")
@@ -61,7 +79,7 @@ render = fun() {
 			}
 			i = i + 1
 		}
-		io.writeln(gen, " (", gc.count(), " / ", gc.peak(), ")")
+		io.writeln(gen, " (peak - ", formatMem(gc.peak()), ") ", formatMem(gc.count()))
 	}
 	while y < height {
 		local x = 0
