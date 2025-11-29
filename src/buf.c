@@ -310,6 +310,22 @@ quartz_Errno quartz_bufputfv(quartz_Buffer *buf, const char *fmt, va_list args) 
 				err = quartz_bufputux(buf, d, 10, data.min, data.minZeroed);
 				if(err) return err;
 			}
+			if(data.d == 'm') {
+				quartz_Uint m = va_arg(args, quartz_Uint);
+				double n = m;
+				const char *units[] = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
+				size_t unitCount = sizeof(units) / sizeof(*units);
+				size_t unit = 0;
+
+				while(unit < unitCount && n >= 1024) {
+					n /= 1024;
+					unit++;
+				}
+				err = quartz_bufputrx(buf, n, 10, 0, 3, false, false);
+				if(err) return err;
+				err = quartz_bufputs(buf, units[unit]);
+				if(err) return err;
+			}
 			if(data.d == 'x') {
 				quartz_Int d = va_arg(args, quartz_Int);
 				err = quartz_bufputnx(buf, d, 16, data.min, data.minZeroed);

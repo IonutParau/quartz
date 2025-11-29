@@ -42,13 +42,23 @@ set = fun(x, y, val) {
 }
 
 gen = 0
+runs = 1000
 
 render = fun() {
+	# term escape to clear line
+	io.write("\e[0K")
 	local y = 0
 	{
 		local i = 0
+		local t = gen / runs
 		while i < width {
-			io.write("=")
+			local p = i / width
+			if p <= t {
+				io.write("=")
+			}
+			if p > t {
+				io.write(" ")
+			}
 			i = i + 1
 		}
 		io.writeln(gen, " (", gc.count(), " / ", gc.peak(), ")")
@@ -135,8 +145,6 @@ placeAcorn(cx-10, cy-2)
 placeAcorn(cx, cy+15)
 
 io.writeln("gens (", width, " x ", height, ")")
-
-local runs = 1000
 
 while gen < runs {
 	gen = gen + 1

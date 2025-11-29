@@ -89,6 +89,9 @@ quartz_Thread *quartz_newThread(quartz_Context *ctx) {
 
 	gState->gcBlocked = false; // memory can be reclaimed now
 
+	// this is a horrible temporary solution to the logging allocation issue
+	quartz_bufinit(Q, &gState->logbuf, 4096);
+
 	return Q;
 }
 
@@ -118,6 +121,7 @@ void quartz_destroyThread(quartz_Thread *Q) {
 			}
 			quartzI_freeObject(Q, cur);
 		}
+		quartz_bufdestroy(&s->logbuf);
 		quartz_Context ctx = s->context;
 		quartz_rawFree(&ctx, Q->call, sizeof(quartz_CallEntry) * Q->callCap);
 		quartz_rawFree(&ctx, Q->stack, sizeof(quartz_StackEntry) * Q->stackCap);
@@ -128,6 +132,25 @@ void quartz_destroyThread(quartz_Thread *Q) {
 	quartz_free(Q, Q->call, sizeof(quartz_CallEntry) * Q->callCap);
 	quartz_free(Q, Q->stack, sizeof(quartz_StackEntry) * Q->stackCap);
 	quartz_free(Q, Q, sizeof(quartz_Thread));
+}
+
+bool quartz_canLog(quartz_Thread *Q, quartz_LogFlags logflags) {
+	return (Q->gState->context.logflags & logflags) != 0;
+}
+
+void quartz_logf(quartz_Thread *Q, quartz_LogFlags logflags, const char *fmt, ...) {
+	if(!quartz_canLog(Q, logflags)) return;
+	quartz_Buffer *logBuf = &Q->gState->logbuf;
+	quartz_bufreset(logBuf);
+	quartz_Errno err;
+	va_list args;
+	va_start(args, fmt);
+	err = quartz_bufputfv(logBuf, fmt, args);
+	va_end(args);
+	if(err) {
+		return;
+	}
+	Q->gState->context.logf(Q->gState->context.userdata, logBuf->buf, logBuf->len);
 }
 
 static void quartz_recordPeak(quartz_Thread *Q) {
@@ -148,6 +171,7 @@ void *quartz_alloc(quartz_Thread *Q, size_t size) {
 		Q->gState->gcCount += size;
 		quartz_recordPeak(Q);
 	}
+	quartz_logf(Q, QUARTZ_LOG_ALLOC, "[Alloc] alloc(%u) = %p\n", (quartz_Uint)size, mem);
 	return mem;
 }
 
@@ -166,12 +190,14 @@ void *quartz_realloc(quartz_Thread *Q, void *memory, size_t oldSize, size_t newS
 		Q->gState->gcCount += newSize;
 		quartz_recordPeak(Q);
 	}
+	quartz_logf(Q, QUARTZ_LOG_ALLOC, "[Alloc] realloc(%p, %u, %u) = %p\n", memory, (quartz_Uint)oldSize, (quartz_Uint)newSize, mem);
 	return mem;
 }
 void quartz_free(quartz_Thread *Q, void *memory, size_t size) {
 	if(memory == NULL) return;
 	quartz_rawFree(&Q->gState->context, memory, size);
 	Q->gState->gcCount -= size;
+	quartz_logf(Q, QUARTZ_LOG_ALLOC, "[Alloc] free(%p, %u)\n", memory, (quartz_Uint)size);
 }
 
 double quartz_clock(quartz_Thread *Q) {

@@ -161,6 +161,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 		"-r <statement> - Execute <statement> as a script\n"
 		"-e <expression> - Evaluate <expression> and print result\n"
 		"-d - Compile and disassemble\n"
+		"-L <all/alloc/gc/errors/parsing> - Enable logging for runtime behavior\n"
 		"- - Execute stdin\n"
 		"-- - Stop reading options\n"
 		;
@@ -169,6 +170,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 		bool interactive = false;
 		bool disassemble = false;
 		size_t off = 1;
+		quartz_LogFlags logflags = 0;
 		while(off < argc) {
 			const char *arg = argv[off];
 			if(strcmp(arg, "--") == 0) {
@@ -214,6 +216,25 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 				disassemble = true;
 				continue;
 			}
+			if(strcmp(arg, "-L") == 0) {
+				const char *logopt = argv[off+1];
+				off += 2;
+				if(logopt == NULL) {
+					return quartz_errorf(Q, QUARTZ_ERUNTIME, "no log option specified");
+				}
+				if(strcmp(logopt, "all") == 0) {
+					logflags |= QUARTZ_LOG_ALL;
+				} else if(strcmp(logopt, "alloc") == 0) {
+					logflags |= QUARTZ_LOG_ALLOC;
+				} else if(strcmp(logopt, "gc") == 0) {
+					logflags |= QUARTZ_LOG_GC;
+				} else if(strcmp(logopt, "fs") == 0) {
+					logflags |= QUARTZ_LOG_FS;
+				} else {
+					return quartz_errorf(Q, QUARTZ_ERUNTIME, "invalid log-opt: %s", logopt);
+				}
+				continue;
+			}
 			if(strcmp(arg, "-") == 0) {
 				off++;
 				err = execStdin(Q, disassemble);
@@ -222,6 +243,8 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			}
 			break;
 		}
+		quartz_Context *ctx = quartz_getContextOf(Q);
+		quartz_setLogging(ctx, logflags, NULL);
 
 		const char *path = argv[off];
 		if(path) {

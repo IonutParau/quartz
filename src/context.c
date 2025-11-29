@@ -116,6 +116,10 @@ static const char *quartzI_defaultCPath() {
 	return QUARTZ_CPATHPREFIX "@.so;lib/@.so;loadall.so";
 }
 
+static void quartzI_defaultLog(void *context, const char *msg, size_t msglen) {
+	fwrite(msg, sizeof(char), msglen, stderr);
+}
+
 void quartz_initContext(quartz_Context *ctx, void *userdata) {
 	ctx->userdata = userdata;
 	ctx->alloc = quartzI_defaultAlloc;
@@ -125,6 +129,8 @@ void quartz_initContext(quartz_Context *ctx, void *userdata) {
 #else
 	ctx->fsDefaultBufSize = BUFSIZ;
 #endif
+	ctx->logflags = 0;
+	ctx->logf = quartzI_defaultLog;
 	quartz_setModuleConfig(ctx, NULL, NULL, NULL);
 }
 
@@ -163,6 +169,11 @@ void quartz_setTime(quartz_Context *ctx, quartz_Timef time) {
 void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file, size_t defaultFileBufSize) {
 	ctx->fs = file;
 	ctx->fsDefaultBufSize = defaultFileBufSize;
+}
+
+void quartz_setLogging(quartz_Context *ctx, quartz_LogFlags flags, quartz_Logf f) {
+	ctx->logflags = flags;
+	if(f != NULL) ctx->logf = f;
 }
 
 void quartz_setModuleConfig(quartz_Context *ctx, const char *path, const char *cpath, const char *pathConfig) {

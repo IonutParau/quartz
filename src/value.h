@@ -158,6 +158,7 @@ typedef struct quartz_Pointer {
 
 typedef struct quartz_GlobalState {
 	quartz_Context context;
+	quartz_Buffer logbuf; // thrown here until we have better allocation
 	quartz_Map *registry;
 	quartz_Map *globals;
 	quartz_Map *loaded;

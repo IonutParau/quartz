@@ -64,6 +64,20 @@ typedef double (*quartz_Clockf)(void *userdata);
 // returns the current UNIX timestamp
 typedef size_t (*quartz_Timef)(void *userdata);
 
+typedef enum quartz_LogFlags {
+	QUARTZ_LOG_ALLOC = 1<<0,
+	QUARTZ_LOG_GC = 1<<1,
+	QUARTZ_LOG_FS = 1<<2,
+
+	// great hack
+	QUARTZ_LOG_ALL = 0xFFFFFFFF,
+} quartz_LogFlags;
+
+// meant to write a sequence of bytes, representing a log message.
+// This may be called multiple times for some log messages.
+// Newlines are automatically put in the log messages, this is purely meant to be equivalent to an fwrite to stderr.
+typedef void (*quartz_Logf)(void *userdata, const char *msg, size_t msglen);
+
 typedef enum quartz_FsAction {
 	// open a file. buf should be cast to a string, it must be NULL terminated.
 	// *buflen is a quartz_FileMode, and the file mode should be respected.
@@ -133,6 +147,8 @@ void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc);
 void quartz_setClock(quartz_Context *ctx, quartz_Clockf clock);
 void quartz_setTime(quartz_Context *ctx, quartz_Timef time);
 void quartz_setFileSystem(quartz_Context *ctx, quartz_Filef file, size_t defaultBufSize);
+// f can be NULL, in which case the logger is not changed.
+void quartz_setLogging(quartz_Context *ctx, quartz_LogFlags flags, quartz_Logf f);
 // configures how module resolution happens for things like loadlib.
 // Path is the path list for scripts, cpath is the path list for native libraries
 // All 3 can be set to NULL for default options.
@@ -184,6 +200,9 @@ typedef quartz_Errno (quartz_UFunction)(quartz_Thread *Q, void *userdata, quartz
 // the stack size is in values
 quartz_Thread *quartz_newThread(quartz_Context *ctx);
 void quartz_destroyThread(quartz_Thread *Q);
+
+bool quartz_canLog(quartz_Thread *Q, quartz_LogFlags logflags);
+void quartz_logf(quartz_Thread *Q, quartz_LogFlags logflags, const char *fmt, ...);
 
 typedef enum quartz_CallFlags {
 	QUARTZ_CALL_STATIC = 1<<0, // ret is not needed
@@ -296,6 +315,7 @@ quartz_Errno quartz_bufputC(quartz_Buffer *buf, quartz_Complex x);
 // - %s outputs a C string, and takes in a const char *
 // - %d outputs a base-10 signed integer, and takes in a quartz_Int.
 // - %u outputs a base-10 unsigned integer, and takes in a quartz_Uint.
+// - %m outputs a human readable size of memory, and takes in a quartz_Uint.
 // - %x outputs a base-16 signed integer, and takes in a quartz_Int.
 // - %X outputs a base-16 unsigned integer, and takes in a quartz_Uint.
 // - %o outputs a base-8 signed integer, and takes in a quartz_Int.

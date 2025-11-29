@@ -137,6 +137,8 @@ void quartz_cleartmp(quartz_Thread *Q) {
 
 void quartz_gc(quartz_Thread *Q) {
 	if(Q->gState->gcBlocked) return; // not allowed
+	quartz_logf(Q, QUARTZ_LOG_GC, "[GC] major collection started\n");
+	size_t oldCount = Q->gState->gcCount;
 	
 	// This GC is super barebones, and thus horrible.
 	// It *MUST* be replaced with a better impl.
@@ -173,6 +175,8 @@ void quartz_gc(quartz_Thread *Q) {
 	}
 
 	Q->gState->gcTarget = Q->gState->gcRatio * Q->gState->gcCount;
+	// dont care about errors
+	quartz_logf(Q, QUARTZ_LOG_GC, "[GC] major collection ended, saved %m\n", (quartz_Uint)(oldCount - Q->gState->gcCount));
 }
 
 quartz_Object *quartzI_allocObject(quartz_Thread *Q, quartz_ObjectType type, size_t size) {
