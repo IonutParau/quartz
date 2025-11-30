@@ -4,6 +4,7 @@
 quartz_Errno quartzFD_uFunc(quartz_Thread *Q, void *userdata, quartz_UserOp op) {
 	quartz_fd *fd = (quartz_fd *)userdata;
 	if(op == QUARTZ_USER_DESTROY) {
+		if(fd->f == NULL) return QUARTZ_OK;
 		return quartzFD_closefd(Q, fd);
 	}
 	return QUARTZ_OK;

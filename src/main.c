@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 
 // to get LSP to sybau
@@ -23,6 +24,33 @@ static quartz_Errno testCompiler(quartz_Thread *Q, const char *s) {
 
 static void printVersionAndCopyright() {
 	printf("Quartz v%d.%d.%d Copyright (C) 2025 Parau Ionut Alexandru\n", QUARTZ_VER_MAJOR, QUARTZ_VER_MINOR, QUARTZ_VER_PATCH);
+}
+
+size_t memMax = 0;
+size_t memCur = 0;
+size_t memPeak = 0;
+size_t numAlloc = 0;
+size_t numFree = 0;
+size_t numRealloc = 0;
+
+static void *limitedAlloc(void *userdata, void *memory, size_t oldSize, size_t newSize) {
+	if(newSize == 0) {
+		numFree++;
+		free(memory);
+		memCur -= oldSize;
+		return NULL;
+	}
+	if((memCur - oldSize + newSize) > memMax) {
+		return NULL; // over limit
+	}
+	memory = realloc(memory, newSize);
+	if(memory == NULL) return NULL;
+	memCur -= oldSize;
+	memCur += newSize;
+	if(memCur > memPeak) memPeak = memCur;
+	if(oldSize == 0) numAlloc++;
+	else numRealloc++;
+	return memory;
 }
 
 static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
@@ -132,6 +160,21 @@ static quartz_Errno execStdin(quartz_Thread *Q, bool disassemble) {
 	if(err) return err;
 	return quartz_call(Q, 1, QUARTZ_CALL_STATIC);
 }
+const char *helpMsg =
+	QUARTZ_VERSION "\n"
+	"quartz [opts] [-] [script] [...args] \n"
+	"-i - Enter repl, default if no options are specified\n"
+	"-v - Print version and other program information\n"
+	"-h / --help - Print help message and exit\n"
+	"-r <statement> - Execute <statement> as a script\n"
+	"-e <expression> - Evaluate <expression> and print result\n"
+	"-d - Compile and disassemble\n"
+	"-L <all/alloc/gc/errors/parsing> - Enable logging for runtime behavior\n"
+	"-M <amount K/M/G> - Limit memory to a specific amount\n"
+	"-m - If using limited memory, print diagnostics\n"
+	"- - Execute stdin\n"
+	"-- - Stop reading options\n"
+	;
 
 static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 	quartz_Errno err;
@@ -152,20 +195,6 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 #endif
 	}
 
-	const char *helpMsg =
-		QUARTZ_VERSION "\n"
-		"quartz [opts] [-] [script] [...args] \n"
-		"-i - Enter repl, default if no options are specified\n"
-		"-v - Print version and other program information\n"
-		"-h / --help - Print help message and exit\n"
-		"-r <statement> - Execute <statement> as a script\n"
-		"-e <expression> - Evaluate <expression> and print result\n"
-		"-d - Compile and disassemble\n"
-		"-L <all/alloc/gc/errors/parsing> - Enable logging for runtime behavior\n"
-		"- - Execute stdin\n"
-		"-- - Stop reading options\n"
-		;
-
 	if(argc >= 2) {
 		bool interactive = false;
 		bool disassemble = false;
@@ -184,13 +213,10 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			}
 			if(strcmp(arg, "-v") == 0) {
 				off++;
-				printVersionAndCopyright();
 				continue;
 			}
 			if(strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
 				off++;
-				fputs(helpMsg, stdout);
-				fflush(stdout);
 				return QUARTZ_OK;
 			}
 			if(strcmp(arg, "-r") == 0) {
@@ -214,6 +240,14 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 			if(strcmp(arg, "-d") == 0) {
 				off++;
 				disassemble = true;
+				continue;
+			}
+			if(strcmp(arg, "-M") == 0) {
+				off += 2; // handled before
+				continue;
+			}
+			if(strcmp(arg, "-m") == 0) {
+				off++;
 				continue;
 			}
 			if(strcmp(arg, "-L") == 0) {
@@ -302,19 +336,137 @@ int main(int argc, char **argv) {
 	char cMem[cSize];
 	quartz_Context *ctx = (quartz_Context*)(void *)cMem;
 	quartz_initContext(ctx, NULL);
+	size_t off = 1;
+	quartz_LogFlags logflags = 0;
+	bool memDiag = false;
+	// TODO: improve arg parsing
+	while(off < argc) {
+		const char *arg = argv[off];
+		if(strcmp(arg, "--") == 0) {
+			off++;
+			break;
+		}
+		if(strcmp(arg, "-i") == 0) {
+			off++;
+			continue;
+		}
+		if(strcmp(arg, "-v") == 0) {
+			off++;
+			printVersionAndCopyright();
+			continue;
+		}
+		if(strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
+			off++;
+			fputs(helpMsg, stdout);
+			fflush(stdout);
+			return QUARTZ_OK;
+		}
+		if(strcmp(arg, "-r") == 0) {
+			off += 2;
+			continue;
+		}
+		if(strcmp(arg, "-e") == 0) {
+			off += 2;
+			continue;
+		}
+		if(strcmp(arg, "-d") == 0) {
+			off++;
+			continue;
+		}
+		if(strcmp(arg, "-M") == 0) {
+			off++;
+			const char *s = argv[off];
+			if(s == NULL) {
+				printf("no log option specified\n");
+				return QUARTZ_OK;
+			}
+			size_t len = strlen(s);
+			size_t unit = 0;
+			if(len > 0) {
+				char u = s[len-1];
+				if(quartzI_isupper(u)) u ^= 0x20;
+				if(u == 'k') {
+					unit = 10;
+					len--;
+				} else if(u == 'm') {
+					unit = 20;
+					len--;
+				} else if(u == 'g') {
+					unit = 30;
+					len--;
+				}
+			}
+			memMax = quartzI_atoi(s, len) << unit;
+			off++;
+			continue;
+		}
+		if(strcmp(arg, "-m") == 0) {
+			off++;
+			memDiag = true;
+			continue;
+		}
+		if(strcmp(arg, "-L") == 0) {
+			const char *logopt = argv[off+1];
+			off += 2;
+			if(logopt == NULL) {
+				fprintf(stderr, "");
+				return 1;
+			}
+			if(strcmp(logopt, "all") == 0) {
+				logflags |= QUARTZ_LOG_ALL;
+			} else if(strcmp(logopt, "alloc") == 0) {
+				logflags |= QUARTZ_LOG_ALLOC;
+			} else if(strcmp(logopt, "gc") == 0) {
+				logflags |= QUARTZ_LOG_GC;
+			} else if(strcmp(logopt, "fs") == 0) {
+				logflags |= QUARTZ_LOG_FS;
+			} else {
+				fprintf(stderr, "invalid log-opt: %s", logopt);
+				return 1;
+			}
+			continue;
+		}
+		if(strcmp(arg, "-") == 0) {
+			off++;
+			break;
+		}
+		break;
+	}
+	volatile bool limitedMem = memMax != 0;
+	quartz_setLogging(ctx, logflags, NULL);
+	if(limitedMem) {
+		quartz_setAllocator(ctx, limitedAlloc);
+	}
 	quartz_Thread *Q = quartz_newThread(ctx);
 
-	quartz_Errno err;
+	quartz_Errno err = QUARTZ_OK;
 
 	err = interpreter(Q, argc, argv);
 	if(err) {
-		printf("ERROR!\n");
-		quartz_pusherror(Q);
-		printf("Error: %s\n", quartz_tostring(Q, -1, &err));
+		fprintf(stderr, "ERROR!\n");
+		if(quartz_pusherror(Q)) {
+			fprintf(stderr, "Failed to push error, likely OOM\n");
+			return 1;
+		}
+		if(quartz_typeof(Q, -1) == QUARTZ_TSTR) {
+			fprintf(stderr, "Error: %s\n", quartz_tostring(Q, -1, &err));
+		} else {
+			fprintf(stderr, "Error of type %s (error code %d)\n", quartz_typenameof(Q, -1), (int)err);
+		}
 		quartz_destroyThread(Q);
 		return 1;
 	}
-
+	
 	quartz_destroyThread(Q);
+
+	if(limitedMem && memDiag) {
+		printf("[MEM STATS]\n");
+		printf("Peak usage: %zu / %zu (%.02f%%)\n", memPeak, memMax, (double)memPeak / memMax * 100);
+		printf("Leaked Memory (if any): %zu (%.02f%%)\n", memCur, (double)memCur / memPeak * 100);
+		printf("Num. Alloc: %zu\n", numAlloc);
+		printf("Num. Free: %zu (%.02f%%)\n", numFree, (double)numFree / numAlloc * 100);
+		printf("Num. Realloc: %zu (%.02f%%)\n", numRealloc, (double)numRealloc / numAlloc * 100);
+	}
+
 	return 0;
 }

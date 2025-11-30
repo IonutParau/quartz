@@ -140,17 +140,17 @@ typedef struct quartz_Function {
 	size_t stacksize;
 } quartz_Function;
 
-typedef struct quartz_Closure {
-	quartz_Object obj;
-	size_t len;
-	quartz_Value f;
-	quartz_Value ups[];
-} quartz_Closure;
-
 typedef struct quartz_Pointer {
 	quartz_Object obj;
 	quartz_Value val;
 } quartz_Pointer;
+
+typedef struct quartz_Closure {
+	quartz_Object obj;
+	size_t len;
+	quartz_Value f;
+	quartz_Pointer *ups[];
+} quartz_Closure;
 
 // improbably high amount of objects
 // TODO: use a dynamic array or linked list instead

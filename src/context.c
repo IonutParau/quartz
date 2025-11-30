@@ -135,14 +135,19 @@ void quartz_initContext(quartz_Context *ctx, void *userdata) {
 }
 
 void *quartz_rawAlloc(quartz_Context *ctx, size_t size) {
+	if(size == 0) return ctx->alloc;
 	return ctx->alloc(ctx->userdata, NULL, 0, size);
 }
 
 void *quartz_rawRealloc(quartz_Context *ctx, void *memory, size_t oldSize, size_t newSize) {
+	if(memory == NULL || memory == ctx->alloc) {
+		return quartz_rawAlloc(ctx, newSize);
+	}
 	return ctx->alloc(ctx->userdata, memory, oldSize, newSize);
 }
 
 void quartz_rawFree(quartz_Context *ctx, void *memory, size_t size) {
+	if(memory == ctx->alloc) return;
 	ctx->alloc(ctx->userdata, memory, size, 0);
 }
 

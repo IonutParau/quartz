@@ -662,6 +662,15 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 
 		err = quartzP_parseStatementBlock(p, block, 0);
 		if(err) return err;
+		
+		err = quartzP_peekToken(p, &t);
+		if(err) return err;
+
+		if(quartzI_strleqlc(t.s, t.len, "else")) {
+			err = quartzP_nextToken(p, &t);
+			if(err) return err;
+			err = quartzP_parseStatement(p, node, flags & QUARTZ_PBLOCK_LOOP);
+		}
 
 		return quartzI_addNodeChild(p->Q, parent, node);
 	}
@@ -673,7 +682,7 @@ quartz_Errno quartzP_parseStatement(quartz_Parser *p, quartz_Node *parent, quart
 		quartz_Node *block = quartzI_allocAST(p, QUARTZ_NODE_BLOCK, p->curline, "", 0);
 		if(block == NULL) return QUARTZ_ENOMEM;
 
-		err = quartzP_parseStatementBlock(p, block, 0);
+		err = quartzP_parseStatementBlock(p, block, flags & QUARTZ_PBLOCK_LOOP);
 		if(err) return err;
 
 		return quartzI_addNodeChild(p->Q, parent, block);

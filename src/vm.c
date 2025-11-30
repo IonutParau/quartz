@@ -3,7 +3,6 @@
 #include "value.h"
 #include "state.h"
 #include "gc.h"
-#include <stdio.h>
 
 quartz_Errno quartzI_addCallEntry(quartz_Thread *Q, quartz_CallEntry *entry) {
 	if(Q->callLen == Q->callCap ) {
@@ -38,8 +37,6 @@ bool quartzI_isCurrentlyInterpreted(quartz_Thread *Q) {
 }
 
 quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) {
-	quartz_clearerror(Q);
-
 	quartz_Errno err = QUARTZ_OK;
 
 	if(quartz_getstacksize(Q) <= argc) {
@@ -66,7 +63,9 @@ quartz_Errno quartz_call(quartz_Thread *Q, size_t argc, quartz_CallFlags flags) 
 		e.c.ku = NULL;
 	}
 	err = quartzI_addCallEntry(Q, &e);
-	if(err) return err;
+	if(err) {
+		return err;
+	}
 	// breaks off links
 	Q->stack[funcIdx] = (quartz_StackEntry) {
 		.isPtr = false,
@@ -236,12 +235,12 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			err = quartz_pop(Q);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_LOADUPVAL) {
-			err = quartzI_pushRawValue(Q, closure->ups[pc->uD]);
+			err = quartzI_pushRawValue(Q, closure->ups[pc->uD]->val);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_STOREUPVAL) {
 			quartz_Value val = quartzI_getStackValue(Q, -1);
 			if(err) goto done;
-			closure->ups[pc->uD] = val;
+			closure->ups[pc->uD]->val = val;
 			err = quartz_pop(Q);
 			if(err) goto done;
 		} else if(pc->op == QUARTZ_OP_SETSTACK) {

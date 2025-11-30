@@ -102,7 +102,9 @@ static void quartz_markObject(quartz_Thread *Q, quartz_Object *obj) {
 		quartz_Closure *f = (quartz_Closure *)obj;
 		quartz_grayValue(Q, f->f);
 		for(size_t i = 0; i < f->len; i++) {
-			quartz_grayValue(Q, f->ups[i]);
+			if(f->ups[i] != NULL) {
+				quartz_grayObject(Q, &f->ups[i]->obj);
+			}
 		}
 		return;
 	}
@@ -300,6 +302,17 @@ quartz_Struct *quartzI_newStruct(quartz_Thread *Q, quartz_Tuple *fields) {
 		s->pairs[i].type = QUARTZ_VNULL;
 	}
 	return s;
+}
+
+quartz_Closure *quartzI_newClosure(quartz_Thread *Q, quartz_Value f, size_t ups) {
+	quartz_Closure *c = (quartz_Closure *)quartzI_allocObject(Q, QUARTZ_OCLOSURE, sizeof(*c) + sizeof(c->ups[0]) * ups);
+	if(c == NULL) return NULL;
+	c->f = f;
+	c->len = ups;
+	for(size_t i = 0; i < ups; i++) {
+		c->ups[i] = NULL;
+	}
+	return c;
 }
 
 quartz_Pointer *quartzI_newPointer(quartz_Thread *Q) {

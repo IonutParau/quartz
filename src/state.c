@@ -100,7 +100,7 @@ void quartz_destroyThread(quartz_Thread *Q) {
 	if(Q == Q->gState->mainThread) {
 		for(size_t i = 0; i < QUARTZ_STDFILE_COUNT; i++) {
 			if(Q->gState->stdfiles[i] != NULL) {
-				quartz_fclose(Q, Q->gState->stdfiles[i]);
+				quartz_ffree(Q, Q->gState->stdfiles[i]);
 				Q->gState->stdfiles[i] = NULL;
 			}
 		}
@@ -111,9 +111,8 @@ void quartz_destroyThread(quartz_Thread *Q) {
 		while(obj) {
 			quartz_Object *cur = obj;
 			obj = cur->nextObject;
-			if(obj == NULL) break;
-			if(obj->type == QUARTZ_OUSERDATA) {
-				quartz_Userdata *u = (quartz_Userdata *)obj;
+			if(cur->type == QUARTZ_OUSERDATA) {
+				quartz_Userdata *u = (quartz_Userdata *)cur;
 				// please never crash :pray:
 				if(u->uFunc != NULL) {
 					u->uFunc(Q, u->userdata, QUARTZ_USER_DESTROY);
@@ -235,11 +234,17 @@ quartz_Errno quartz_error(quartz_Thread *Q, quartz_Errno exit) {
 
 // raise formatted string
 quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt, va_list args) {
+	if(exit == QUARTZ_ENOMEM) return quartz_oom(Q);
 	quartz_Buffer buf;
-	quartz_bufinit(Q, &buf, 64);
-	if(quartz_bufputfv(&buf, fmt, args)) {
+	quartz_Errno err;
+	err = quartz_bufinit(Q, &buf, 64);
+	if(err) {
+		return err;
+	}
+	err = quartz_bufputfv(&buf, fmt, args);
+	if(err) {
 		quartz_bufdestroy(&buf);
-		return quartz_oom(Q);
+		return err;
 	}
 	quartz_String *s = quartzI_newString(Q, buf.len, buf.buf);
 	if(s == NULL) {
@@ -250,7 +255,7 @@ quartz_Errno quartz_errorfv(quartz_Thread *Q, quartz_Errno exit, const char *fmt
 	Q->errorValue.obj = &s->obj;
 	quartz_bufdestroy(&buf);
 	// error in error handler
-	quartz_Errno err = quartzI_invokeErrorHandler(Q, exit);
+	err = quartzI_invokeErrorHandler(Q, exit);
 	if(err) return err;
 	return exit;
 }
@@ -847,7 +852,9 @@ quartz_Errno quartz_append(quartz_Thread *Q, size_t n) {
 		while(newLen > newCap) newCap *= 2;
 		if(newCap != l->cap) {
 			quartz_Value *newVals = quartz_realloc(Q, l->vals, sizeof(quartz_Value) * l->cap, sizeof(quartz_Value) * newCap);
-			if(newVals == NULL) return quartz_oom(Q);
+			if(newVals == NULL) {
+				return quartz_oom(Q);
+			}
 			l->vals = newVals;
 			l->cap = newCap;
 		}

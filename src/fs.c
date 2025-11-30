@@ -52,12 +52,16 @@ quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, size_t pathlen, qu
 	return f;
 }
 
+void quartz_ffree(quartz_Thread *Q, quartz_File *f) {
+	quartz_free(Q, f->buf, f->bufsize);
+	quartz_free(Q, f, sizeof(quartz_File));
+}
+
 quartz_Errno quartz_fclose(quartz_Thread *Q, quartz_File *f) {
 	quartz_Context ctx = Q->gState->context;
 	quartz_Errno err = ctx.fs(Q, ctx.userdata, &f->fData, QUARTZ_FS_CLOSE, NULL, NULL);
 	if(err) return err;
-	quartz_free(Q, f->buf, f->bufsize);
-	quartz_free(Q, f, sizeof(quartz_File));
+	quartz_ffree(Q, f);
 	return QUARTZ_OK;
 }
 

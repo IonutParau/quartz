@@ -64,8 +64,9 @@ quartz_Errno quartzC_initCompiler(quartz_Thread *Q, quartz_Compiler *c, quartz_S
 	c->globals = globals;
 	c->module = module;
 
-	c->codecap = 256;
+	c->codecap = 8;
 	c->code = quartz_alloc(Q, sizeof(quartz_Instruction) * c->codecap);
+	if(c->code == NULL) return quartz_oom(Q);
 	return QUARTZ_OK;
 }
 
@@ -78,6 +79,7 @@ static void quartzC_freeCompilerNoCode(quartz_Compiler c) {
 		quartz_free(Q, cur, sizeof(*cur));
 	}
 	c.constants = NULL;
+	quartzC_setLocalCount(&c, 0);
 }
 
 void quartzC_freeFailingCompiler(quartz_Compiler c) {
@@ -100,6 +102,7 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c) {
 	size_t constCount = quartzC_countConstants(c);
 	
 	quartz_Upvalue *upvaldefs = quartz_alloc(Q, sizeof(quartz_Upvalue) * c->upvalc);
+	if(upvaldefs == NULL) return NULL;
 	quartz_UpvalDesc *curUp = c->upvalList;
 	for(size_t i = 0; i < c->upvalc; i++, curUp = curUp->next) {
 		upvaldefs[c->upvalc - i - 1] = curUp->info;
@@ -107,11 +110,30 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c) {
 	
 	quartz_Constants *curConst = quartzC_getConstants(c);
 	quartz_Value *consts = quartz_alloc(Q, sizeof(quartz_Value) * constCount);
+	if(consts == NULL) {
+		quartz_free(Q, upvaldefs, sizeof(quartz_Upvalue) * c->upvalc);
+		return NULL;
+	}
 	for(size_t i = 0; i < constCount; i++, curConst = curConst->next) {
 		consts[constCount - i - 1] = curConst->val;
 	}
 
+	quartz_Instruction *smallerCode = quartz_realloc(Q, c->code, sizeof(quartz_Instruction) * c->codecap, sizeof(quartz_Instruction) * c->codesize);
+	if(smallerCode == NULL) {
+		quartz_free(Q, upvaldefs, sizeof(quartz_Upvalue) * c->upvalc);
+		quartz_free(Q, consts, sizeof(quartz_Value) * constCount);
+		return NULL;
+	}
+	// keep struct valid just in case
+	c->code = smallerCode;
+	c->codecap = c->codesize;
+
 	quartz_Function *f = (quartz_Function *)quartzI_allocObject(Q, QUARTZ_OFUNCTION, sizeof(quartz_Function));
+	if(f == NULL) {
+		quartz_free(Q, upvaldefs, sizeof(quartz_Upvalue) * c->upvalc);
+		quartz_free(Q, consts, sizeof(quartz_Value) * constCount);
+		return NULL;
+	}
 	f->module = c->module;
 	f->globals = c->globals;
 	// TODO: preallocate
@@ -119,10 +141,6 @@ quartz_Function *quartzC_toFunctionAndFree(quartz_Compiler *c) {
 	f->argc = c->argc;
 	f->flags = c->funcflags;
 	f->code = c->code;
-	for(size_t i = c->codesize; i < c->codecap; i++) {
-		f->code[i].op = QUARTZ_OP_NOP;
-		f->code[i].line = 0;
-	}
 	f->codesize = c->codecap;
 	f->chunkname = c->source;
 	f->constCount = constCount;
@@ -661,7 +679,24 @@ quartz_Errno quartzC_runStatement(quartz_Compiler *c, quartz_Node *node) {
 			c->code[branchA].sD = endOfBody - branchA;
 			return QUARTZ_OK;
 		} else {
+			// has else, stuff is more complex
+			// TODO: optimize for else if
+			err = quartzC_runStatement(c, node->children[1]);
+			if(err) return err;
+			// this branch is to go from success to end of else
+			size_t branchB = c->codesize;
+			err = quartzC_writeInstruction(c, (quartz_Instruction) {
+				.line = node->line,
+			});
+			err = quartzC_runStatement(c, node->children[2]);
+			if(err) return err;
+			size_t endOfCheck = c->codesize;
 
+			c->code[branchA].op = QUARTZ_OP_PCNJMP;
+			c->code[branchA].sD = branchB - branchA + 1;
+			c->code[branchB].op = QUARTZ_OP_JMP;
+			c->code[branchB].sD = endOfCheck - branchB;
+			return QUARTZ_OK;
 		}
 		return QUARTZ_OK;
 	}

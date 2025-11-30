@@ -15,6 +15,7 @@ quartz_Tuple *quartzI_newTuple(quartz_Thread *Q, size_t len);
 quartz_Set *quartzI_newSet(quartz_Thread *Q, size_t cap);
 quartz_Map *quartzI_newMap(quartz_Thread *Q, size_t cap);
 quartz_Struct *quartzI_newStruct(quartz_Thread *Q, quartz_Tuple *fields);
+quartz_Closure *quartzI_newClosure(quartz_Thread *Q, quartz_Value f, size_t ups);
 quartz_Pointer *quartzI_newPointer(quartz_Thread *Q);
 quartz_Thread *quartzI_newThread(quartz_Thread *Q);
 quartz_Userdata *quartzI_newUserdata(quartz_Thread *Q, size_t size, const char *type, size_t associated);
