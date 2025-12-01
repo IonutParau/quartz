@@ -32,6 +32,8 @@ size_t memPeak = 0;
 size_t numAlloc = 0;
 size_t numFree = 0;
 size_t numRealloc = 0;
+size_t numReq = 0;
+size_t numOOM = 0;
 
 static void *limitedAlloc(void *userdata, void *memory, size_t oldSize, size_t newSize) {
 	if(newSize == 0) {
@@ -40,11 +42,16 @@ static void *limitedAlloc(void *userdata, void *memory, size_t oldSize, size_t n
 		memCur -= oldSize;
 		return NULL;
 	}
+	numReq++;
 	if((memCur - oldSize + newSize) > memMax) {
+		numOOM++;
 		return NULL; // over limit
 	}
 	memory = realloc(memory, newSize);
-	if(memory == NULL) return NULL;
+	if(memory == NULL) {
+		numOOM++;
+		return NULL;
+	}
 	memCur -= oldSize;
 	memCur += newSize;
 	if(memCur > memPeak) memPeak = memCur;
@@ -466,6 +473,8 @@ int main(int argc, char **argv) {
 		printf("Num. Alloc: %zu\n", numAlloc);
 		printf("Num. Free: %zu (%.02f%%)\n", numFree, (double)numFree / numAlloc * 100);
 		printf("Num. Realloc: %zu (%.02f%%)\n", numRealloc, (double)numRealloc / numAlloc * 100);
+		printf("Num. Requests: %zu\n", numReq);
+		printf("Num. OOM: %zu (%.02f%%)\n", numOOM, (double)numOOM / numReq * 100);
 	}
 
 	return 0;
