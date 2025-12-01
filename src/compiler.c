@@ -223,6 +223,8 @@ quartz_Errno quartzC_internString(quartz_Compiler *c, const char *str, size_t le
 }
 
 quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len, quartz_Variable *var) {
+	quartz_Errno err = QUARTZ_OK;
+
 	// locals
 	{
 		quartz_Local *local = c->localList;
@@ -249,7 +251,35 @@ quartz_Errno quartzC_useVariable(quartz_Compiler *c, const char *str, size_t len
 		}
 	}
 
-	// TODO: stealing from the top-scope
+	if(c->outer != NULL) {
+		quartz_Variable outvar;
+		err = quartzC_useVariable(c->outer, str, len, &outvar);
+		if(err) return err;
+
+		if(outvar.type == QUARTZC_VAR_GLOBAL) {
+			*var = outvar;
+			return QUARTZ_OK;
+		}
+
+		quartz_Upvalue upval;
+		upval.inStack = (outvar.type == QUARTZC_VAR_LOCAL);
+		upval.stackIndex = outvar.index;
+
+		quartz_UpvalDesc *nup = quartz_alloc(c->Q, sizeof(quartz_UpvalDesc));
+		if(nup == NULL) return quartz_oom(c->Q);
+
+		nup->info = upval;
+		nup->str = str;
+		nup->strlen = len;
+		nup->index = c->upvalc++;
+		nup->next = c->upvalList;
+		c->upvalList = nup;
+		
+		var->type = QUARTZC_VAR_UPVAL;
+		var->index = nup->index;
+
+		return QUARTZ_OK;
+	}
 
 	var->type = QUARTZC_VAR_GLOBAL;
 	return QUARTZ_OK;
@@ -536,7 +566,7 @@ quartz_Errno quartzC_pushValue(quartz_Compiler *c, quartz_Node *node) {
 		err = quartzC_addConstant(c, "", 0, fc);
 		if(err) return err;
 		return quartzC_writeInstruction(c, (quartz_Instruction) {
-			.op = QUARTZ_OP_PUSHCONST,
+			.op = f->upvalCount == 0 ? QUARTZ_OP_PUSHCONST : QUARTZ_OP_PUSHCLOSURE,
 			.uD = constID,
 			.line = node->line,
 		});

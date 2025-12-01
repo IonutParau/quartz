@@ -262,6 +262,29 @@ static quartz_Errno quartz_vmExec(quartz_Thread *Q) {
 			}
 			err = quartz_return(Q, -1);
 			goto done;
+		} else if(pc->op == QUARTZ_OP_PUSHCLOSURE) {
+			quartz_Value fv = f->consts[pc->uD];
+			quartz_Function *cf = quartzI_getFunction(fv);
+			quartz_Closure *clos = quartzI_newClosure(Q, fv, cf->upvalCount);
+			if(clos == NULL) {
+				err = quartz_oom(Q);
+				goto done;
+			}
+			for(size_t i = 0; i < cf->upvalCount; i++) {
+				quartz_Upvalue up = cf->upvaldefs[i];
+				if(up.inStack) {
+					quartz_Pointer *p = quartzI_getStackValuePointer(Q, up.stackIndex, &err);
+					if(err) goto done;
+					clos->ups[i] = p;
+				} else {
+					clos->ups[i] = closure->ups[i];
+				}
+			}
+			err = quartzI_pushRawValue(Q, (quartz_Value) {
+				.type = QUARTZ_VOBJ,
+				.obj = &clos->obj,
+			});
+			if(err) goto done;
 		} else {
 			err = quartz_errorf(Q, QUARTZ_ERUNTIME, "bad opcode: %u", (quartz_Uint)pc->op);
 			goto done;

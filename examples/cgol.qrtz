@@ -4,9 +4,9 @@
 # only with stuff available at that time
 # it is being updated over time as new features are added
 
-data = []
-width = 80
-height = 32
+local data = []
+local width = 80
+local height = 32
 
 {
 	local x = 0
@@ -16,7 +16,7 @@ height = 32
 	}
 }
 
-wrap = fun(x, n) {
+local wrap = fun(x, n) {
 	while x >= n {
 		x = x - n
 	}
@@ -26,26 +26,26 @@ wrap = fun(x, n) {
 	return x
 }
 
-get = fun(x, y) {
+local get = fun(x, y) {
 	x = wrap(x, width)
 	y = wrap(y, height)
 
 	return data[x + (y * width)]
 }
 
-set = fun(x, y, val) {
+local set = fun(x, y, val) {
 	x = wrap(x, width)
 	y = wrap(y, height)
 
 	data[x + (y * width)] = val
 }
 
-gen = 0
-runs = 1000
+local gen = 0
+local runs = 1000
 
-units = ["B", "KiB", "MiB", "GiB", "TiB"]
+local units = ["B", "KiB", "MiB", "GiB", "TiB"]
 
-formatMem = fun(x) {
+local formatMem = fun(x) {
 	local unit = 0
 
 	# theoretical out of bounds error
@@ -61,7 +61,7 @@ formatMem = fun(x) {
 	return x .. units[unit] 
 }
 
-render = fun() {
+local render = fun() {
 	# term escape to clear line
 	io.write("\e[0K")
 	local y = 0
@@ -97,7 +97,7 @@ render = fun() {
 	io.write("\e[", height+1, "A")
 }
 
-count = fun(x, y) {
+local count = fun(x, y) {
 	local n = 0
 	if get(x+1, y) { n = n + 1 }
 	if get(x-1, y) { n = n + 1 }
@@ -110,7 +110,7 @@ count = fun(x, y) {
 	return n
 }
 
-update = fun() {
+local update = fun() {
 	# rip GC
 	# this simulation is intentionally not super optimized
 	# to be more representative
@@ -137,7 +137,7 @@ update = fun() {
 	data = newData
 }
 
-placeAcorn = fun(x, y) {
+local placeAcorn = fun(x, y) {
 	set(x, y, true)
 
 	set(x+1, y+1, true)

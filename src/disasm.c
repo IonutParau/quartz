@@ -107,11 +107,11 @@ quartz_OpDisInfo quartzI_disInfo[QUARTZ_VMOPS_COUNT] = {
 	},
 	[QUARTZ_OP_LOADUPVAL] = {
 		.name = "loadupval",
-		.args = QUARTZ_DISARG_uD_upval,
+		.args = QUARTZ_DISARG_uD,
 	},
 	[QUARTZ_OP_STOREUPVAL] = {
 		.name = "storeupval",
-		.args = QUARTZ_DISARG_uD_upval,
+		.args = QUARTZ_DISARG_uD,
 	},
 	[QUARTZ_OP_SETSTACK] = {
 		.name = "setstack",
@@ -128,6 +128,10 @@ quartz_OpDisInfo quartzI_disInfo[QUARTZ_VMOPS_COUNT] = {
 	[QUARTZ_OP_RET] = {
 		.name = "ret",
 		.args = QUARTZ_DISARG_A,
+	},
+	[QUARTZ_OP_PUSHCLOSURE] = {
+		.name = "pushclosure",
+		.args = QUARTZ_DISARG_uD_const,
 	},
 };
 
@@ -160,7 +164,8 @@ static quartz_Errno quartzDis_disassembleFunc(quartz_Thread *Q, quartz_Buffer *b
 
 	for(size_t i = 0; i < f->constCount; i++) {
 		quartz_Value v = f->consts[i];
-		quartz_String *s = quartzI_valueQuoted(Q, v);
+		quartz_Type t = quartzI_trueTypeOf(v);
+		quartz_String *s = t == QUARTZ_TFUNCTION ? quartzI_valueToString(Q, v) : quartzI_valueQuoted(Q, v);
 		if(s == NULL) return quartz_oom(Q);
 		constStrs[i] = s;
 
@@ -170,7 +175,7 @@ static quartz_Errno quartzDis_disassembleFunc(quartz_Thread *Q, quartz_Buffer *b
 	
 	for(size_t i = 0; i < f->upvalCount; i++) {
 		quartz_Upvalue u = f->upvaldefs[i];
-		err = quartz_bufputf(buf, ".upval %u %s\n", (quartz_Uint)u.stackIndex, u.inStack ? "in-stack" : "stolen");
+		err = quartz_bufputf(buf, ".upval %u %u %s\n", (quartz_Uint)i, (quartz_Uint)u.stackIndex, u.inStack ? "in-stack" : "stolen");
 		if(err) return quartz_erroras(Q, err);
 	}
 
