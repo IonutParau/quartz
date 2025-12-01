@@ -79,6 +79,12 @@ static void quartzC_freeCompilerNoCode(quartz_Compiler c) {
 		quartz_free(Q, cur, sizeof(*cur));
 	}
 	c.constants = NULL;
+	quartz_UpvalDesc *up = c.upvalList;
+	while(up) {
+		quartz_UpvalDesc *cur = up;
+		up = up->next;
+		quartz_free(Q, cur, sizeof(*cur));
+	}
 	quartzC_setLocalCount(&c, 0);
 }
 

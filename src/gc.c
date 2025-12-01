@@ -393,6 +393,12 @@ void quartzI_freeObject(quartz_Thread *Q, quartz_Object *obj) {
 		quartz_free(Q, f->consts, sizeof(f->consts[0]) * f->constCount);
 		quartz_free(Q, f->code, sizeof(f->code[0]) * f->codesize);
 		quartz_free(Q, f, sizeof(*f));
+	} else if(obj->type == QUARTZ_OCLOSURE) {
+		quartz_Closure *c = (quartz_Closure *)obj;
+		quartz_free(Q, c, sizeof(*c) + sizeof(c->ups[0]) * c->len);
+	} else if(obj->type == QUARTZ_OPOINTER) {
+		quartz_Pointer *p = (quartz_Pointer *)obj;
+		quartz_free(Q, p, sizeof(*p));
 	} else if(obj->type == QUARTZ_OUSERDATA) {
 		quartz_Userdata *u = (quartz_Userdata *)obj;
 		quartz_free(Q, u->userdata, u->userdataSize);
