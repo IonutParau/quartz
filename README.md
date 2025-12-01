@@ -6,9 +6,9 @@ It is written in C (C99 specifically).
 Features:
 - Co-operate multi-tasking.
 - Dynamic typing.
-- No dependency on `malloc` or `stdio.h` in the engine by default.
+- `libc`-free option via a context system, allowing it to run on baremetal targets.
 - Automatic memory management via tracing garbage collection.
-- Very flexible and stable ABI, reducing the odds of breaking changes.
+- Error codes instead of setjmp/longjmp, for deterministic cleanup in C functions.
 - Separate `int` (C `intptr_t`), `real` (C `double`) and `complex` (2 C `float`s) types.
 
 It only depends on 5 headers:
