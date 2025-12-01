@@ -167,7 +167,7 @@ quartz_Context *quartz_getContextOf(quartz_Thread *Q);
 // For those who are confused, because we do not necessarily have a libc running
 // we implement our own file abstraction layer and buffering.
 
-quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, size_t pathlen, quartz_FileMode mode, quartz_Errno *err);
+quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, quartz_FileMode mode, quartz_Errno *err);
 // free file but not close resource
 void quartz_ffree(quartz_Thread *Q, quartz_File *f);
 quartz_Errno quartz_fclose(quartz_Thread *Q, quartz_File *f);

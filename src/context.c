@@ -40,7 +40,7 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		return QUARTZ_OK;
 	}
 	if(action == QUARTZ_FS_OPEN) {
-		quartz_FileMode fmode = *buflen;
+		quartz_FileMode fmode = *(quartz_FileMode *)(void *)buflen;
 		char mode[3] = "r";
 		mode[1] = '\0';
 		mode[2] = '\0';
@@ -49,8 +49,11 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		if(fmode & QUARTZ_FILE_WRITABLE) mode[0] = 'w';
 		if(fmode & QUARTZ_FILE_APPEND) mode[0] = 'a';
 		if(fmode & QUARTZ_FILE_BINARY) mode[1] = 'b';
-
+		
 		FILE *f = fopen(buf, mode);
+		if(f == NULL) {
+			return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+		}
 		setvbuf(f, NULL, _IONBF, 0);
 		*(FILE **)fileData = f;
 		return QUARTZ_OK;
@@ -69,6 +72,10 @@ static quartz_Errno quartzI_defaultFile(quartz_Thread *Q, void *userdata, void *
 		while(written < toRead) {
 			if(feof(f)) break;
 			written += fread(buf + written, 1, toRead - written, f);
+			int e = ferror(f);
+			if(e) {
+				return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(e));
+			}
 		}
 		*buflen = written;
 		return QUARTZ_OK;

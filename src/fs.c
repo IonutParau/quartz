@@ -36,11 +36,11 @@ static quartz_File *quartz_fwrap(quartz_Thread *Q, void *fData, quartz_FileMode 
 	return f;
 }
 
-quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, size_t pathlen, quartz_FileMode mode, quartz_Errno *err) {
+quartz_File *quartz_fopen(quartz_Thread *Q, const char *path, quartz_FileMode mode, quartz_Errno *err) {
 	quartz_Context ctx = Q->gState->context;
 	void *fData;
 
-	*err = ctx.fs(Q, ctx.userdata, &fData, QUARTZ_FS_OPEN, (void *)path, &pathlen);
+	*err = ctx.fs(Q, ctx.userdata, &fData, QUARTZ_FS_OPEN, (void *)path, (void *)&mode);
 	if(*err) return NULL;
 
 	quartz_File *f = quartz_fwrap(Q, fData, mode, err);
@@ -137,7 +137,7 @@ quartz_Errno quartz_fread(quartz_Thread *Q, quartz_File *f, void *buf, size_t *b
 		return ctx.fs(Q, ctx.userdata, &f->fData, QUARTZ_FS_READ, buf, buflen);
 	}
 	size_t requested = *buflen;
-	size_t written = 0;
+	size_t written = requested;
 	for(size_t i = 0; i < requested; i++) {
 		quartz_Errno err;
 		if(quartzI_fgetc(Q, f, buf + i, &err)) {

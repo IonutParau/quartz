@@ -10,7 +10,7 @@ quartz_Errno quartz_libfs_open(quartz_Thread *Q, size_t argc) {
 	
 	quartz_FileMode mode = QUARTZ_FILE_READABLE;
 
-	quartz_File *f = quartz_fopen(Q, s, len, mode, &err);
+	quartz_File *f = quartz_fopen(Q, s, mode, &err);
 	if(err) return err;
 
 	quartz_fd *fd;
