@@ -161,6 +161,7 @@ static quartz_Errno execStdin(quartz_Thread *Q, bool disassemble) {
 		if(err) return err;
 		fwrite(buf.buf, sizeof(char), buf.len, stdout);
 		fflush(stdout);
+		quartz_bufdestroy(&buf);
 		return QUARTZ_OK;
 	}
 	err = quartz_pushstring(Q, "(stdin)");
@@ -321,6 +322,7 @@ static quartz_Errno interpreter(quartz_Thread *Q, int argc, char **argv) {
 				}
 				fwrite(buf.buf, sizeof(buf.buf[0]), buf.len, stdout);
 				fflush(stdout);
+				quartz_bufdestroy(&buf);
 				return QUARTZ_OK;
 			} else {
 				for(size_t i = off; i < argc; i++) {
