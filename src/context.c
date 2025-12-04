@@ -9,6 +9,12 @@
 #include <errno.h>
 #endif
 
+#ifdef QUARTZ_POSIX
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
+
 size_t quartz_sizeOfContext() {
 	return sizeof(quartz_Context);
 }
@@ -124,7 +130,58 @@ static const char *quartzI_defaultCPath() {
 }
 
 static void quartzI_defaultLog(void *context, const char *msg, size_t msglen) {
+#ifndef QUARTZ_NO_LIBC
 	fwrite(msg, sizeof(char), msglen, stderr);
+#endif
+}
+
+static quartz_Errno quartzI_defaultOs(quartz_Thread *Q, void *context, quartz_OsFunc func, quartz_OsArgs *const args, quartz_OsRet *ret) {
+#ifndef QUARTZ_NO_LIBC
+	if(func == QUARTZ_OSF_SPAWN) {
+#ifdef QUARTZ_POSIX
+	pid_t pid = fork();
+	if(pid == -1) {
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+	}
+	if(pid == 0) {
+		// we're the new process!
+		const char * const *env = args->spawn.env;
+		int err;
+		if(env == NULL) {
+			err = execv(args->spawn.path, (char * const *)args->spawn.argv);
+		} else {
+			err = execve(args->spawn.path, (char * const *)args->spawn.argv, (char * const *) env);
+		}
+		exit(EXIT_FAILURE); // we're meant to be dead!
+	} else {
+		while(1) {
+			int status = 0;
+			if(waitpid(pid, &status, 0) == -1) {
+				return quartz_errorf(Q, QUARTZ_ERUNTIME, "%s", strerror(errno));
+			}
+			if(WIFSIGNALED(status)) {
+				ret->spawnOrExec.exited = false;
+				ret->spawnOrExec.signal = WTERMSIG(status);
+				return QUARTZ_OK;
+			}
+			if(WIFEXITED(status)) {
+				ret->spawnOrExec.exited = true;
+				ret->spawnOrExec.exitcode = WEXITSTATUS(status);
+				return QUARTZ_OK;
+			}
+		}
+	}
+#elif defined(QUARTZ_WINDOWS)
+#endif
+		return quartz_errorf(Q, QUARTZ_ERUNTIME, "unsupported function");
+	}
+	if(func == QUARTZ_OSF_EXEC) {
+		ret->spawnOrExec.exited = true;
+		ret->spawnOrExec.exitcode = system(args->exec.cmd);
+		return QUARTZ_OK;
+	}
+#endif
+	return quartz_errorf(Q, QUARTZ_ERUNTIME, "unsupported function");
 }
 
 void quartz_initContext(quartz_Context *ctx, void *userdata) {
@@ -138,6 +195,7 @@ void quartz_initContext(quartz_Context *ctx, void *userdata) {
 #endif
 	ctx->logflags = 0;
 	ctx->logf = quartzI_defaultLog;
+	ctx->osf = quartzI_defaultOs;
 	quartz_setModuleConfig(ctx, NULL, NULL, NULL);
 }
 
@@ -164,6 +222,11 @@ double quartz_rawClock(quartz_Context *ctx) {
 
 size_t quartz_rawTime(quartz_Context *ctx) {
 	return ctx->time(ctx->userdata);
+}
+
+quartz_Errno quartz_osfunc(quartz_Thread *Q, quartz_OsFunc func, quartz_OsArgs *const args, quartz_OsRet *ret) {
+	quartz_Context ctx = Q->gState->context;
+	return ctx.osf(Q, ctx.userdata, func, args, ret);
 }
 
 void quartz_setAllocator(quartz_Context *ctx, quartz_Allocf alloc) {

@@ -19,6 +19,7 @@ typedef struct quartz_Context {
 	size_t fsDefaultBufSize;
 	quartz_LogFlags logflags;
 	quartz_Logf logf;
+	quartz_Osf osf;
 	const char *modPath;
 	const char *modCPath;
 	char modPathConf[QUARTZ_PATHCONF_SIZE];

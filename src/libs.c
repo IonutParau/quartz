@@ -8,6 +8,8 @@ quartz_Errno quartz_openstdlib(quartz_Thread *Q) {
 	if(err) return err;
 	err = quartz_openlibfs(Q);
 	if(err) return err;
+	err = quartz_openlibos(Q);
+	if(err) return err;
 	err = quartz_openlibgc(Q);
 	if(err) return err;
 	err = quartz_openlibvm(Q);

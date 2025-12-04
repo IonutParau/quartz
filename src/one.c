@@ -19,6 +19,7 @@
 #include "libcore.c"
 #include "libio.c"
 #include "libfs.c"
+#include "libos.c"
 #include "libgc.c"
 #include "libvm.c"
 #include "libbuf.c"

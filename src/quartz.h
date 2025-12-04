@@ -64,6 +64,81 @@ typedef double (*quartz_Clockf)(void *userdata);
 // returns the current UNIX timestamp
 typedef size_t (*quartz_Timef)(void *userdata);
 
+typedef enum quartz_OsFunc {
+	QUARTZ_OSF_SPAWN,
+	QUARTZ_OSF_EXEC,
+	QUARTZ_OSF_GETENV,
+	QUARTZ_OSF_SETENV,
+	QUARTZ_OSF_ALLOCENV,
+	QUARTZ_OSF_FREEENV,
+	QUARTZ_OSF_EXIT,
+	QUARTZ_OSF_DATE,
+} quartz_OsFunc;
+
+typedef union quartz_OsArgs {
+	// basically just execve
+	struct {
+		// the program path requested
+		const char *path;
+		// the array of arguments, with argv[0] normally being the path.
+		// NULL for no arguments
+		const char * const *argv;
+		// NULL for current environment
+		const char * const *env;
+	} spawn;
+	struct {
+		const char *cmd;
+	} exec;
+	struct {
+		const char *name;
+	} getenv;
+	struct {
+		const char *name;
+		const char *val;
+	} setenv;
+	struct {
+		char **env;
+		size_t envlen;
+	} freeEnv;
+	int exit;
+} quartz_OsArgs;
+
+typedef union quartz_OsRet {
+	struct {
+		bool exited;
+		union {
+			int exitcode;
+			int signal;
+		};
+	} spawnOrExec;
+	struct {
+		char **env;
+		size_t envlen;
+	} allocEnv;
+	struct {
+		// second (0-60)
+		char sec;
+		// minute (0-59)
+		char minutes;
+		// hour (0-23)
+		char hour;
+		// day of the month (1-31)
+		char day;
+		// week day (0-6, monday is 0)
+		char wday;
+		// month (0-12)
+		char month;
+		// day of year (0-365)
+		short yday;
+		// year, arbitrarily large
+		size_t year;
+		// daylight savings flag
+		bool isdst;
+	} date;
+} quartz_OsRet;
+
+typedef quartz_Errno (*quartz_Osf)(quartz_Thread *Q, void *userdata, quartz_OsFunc func, quartz_OsArgs *const arg, quartz_OsRet *ret);
+
 typedef enum quartz_LogFlags {
 	QUARTZ_LOG_ALLOC = 1<<0,
 	QUARTZ_LOG_GC = 1<<1,
@@ -247,6 +322,7 @@ quartz_Errno quartz_openstdlib(quartz_Thread *Q);
 quartz_Errno quartz_openlibcore(quartz_Thread *Q);
 quartz_Errno quartz_openlibio(quartz_Thread *Q);
 quartz_Errno quartz_openlibfs(quartz_Thread *Q);
+quartz_Errno quartz_openlibos(quartz_Thread *Q);
 quartz_Errno quartz_openlibgc(quartz_Thread *Q);
 quartz_Errno quartz_openlibvm(quartz_Thread *Q);
 quartz_Errno quartz_openlibbuf(quartz_Thread *Q);
@@ -272,6 +348,7 @@ void quartz_free(quartz_Thread *Q, void *memory, size_t size);
 
 double quartz_clock(quartz_Thread *Q);
 size_t quartz_time(quartz_Thread *Q);
+quartz_Errno quartz_osfunc(quartz_Thread *Q, quartz_OsFunc func, quartz_OsArgs *const args, quartz_OsRet *ret);
 
 #define QUARTZ_MIN_BASE 2
 #define QUARTZ_MAX_BASE 16
