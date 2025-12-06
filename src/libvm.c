@@ -1,6 +1,5 @@
 #include "quartz.h"
 #include "value.h"
-#include "utils.h"
 
 static quartz_Errno quartz_libvm_disassemble(quartz_Thread *Q, size_t argc) {
 	quartz_Errno err = QUARTZ_OK;
@@ -72,7 +71,10 @@ static quartz_Errno quartz_libvm_stacktrace(quartz_Thread *Q, size_t argc) {
 	err = quartz_bufputs(&buf, "stacktrace:\n");
 	if(err) goto cleanup;
 	quartz_CallInfo info;
+	size_t maxDepth = 10;
 	size_t depth = quartz_callDepth(Q);
+	bool massive = depth > maxDepth;
+	if(massive) depth = maxDepth;
 	for(size_t i = 1; i < depth; i++) {
 		err = quartz_requestCallInfo(Q, i, QUARTZ_CALLREQ_SOURCE, &info);
 		if(err) goto cleanup;
@@ -81,6 +83,10 @@ static quartz_Errno quartz_libvm_stacktrace(quartz_Thread *Q, size_t argc) {
 		if(err) goto cleanup;
 
 		err = quartz_bufputf(&buf, "\t%z:%u\n", len, s, (quartz_Uint)info.curline);
+		if(err) goto cleanup;
+	}
+	if(massive) {
+		err = quartz_bufputs(&buf, "\t...\n");
 		if(err) goto cleanup;
 	}
 	err = quartz_pushlstring(Q, buf.buf, buf.len);

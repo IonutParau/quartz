@@ -82,6 +82,7 @@ void quartzP_initParser(quartz_Thread *Q, quartz_Parser *p, const char *s) {
 	p->off = 0;
 	p->curline = 1;
 	p->curToken.tt = QUARTZ_TOK_EOF;
+	p->curToken.s = p->s;
 	p->curToken.len = 0;
 	p->errloc = 0;
 	p->pErr = QUARTZ_PARSE_OK;
@@ -103,10 +104,7 @@ static bool quartzP_mustSkipToken(quartz_Token *t) {
 }
 
 static quartz_Errno quartzP_consume(quartz_Parser *p) {
-	do {
-		if(p->curToken.tt != QUARTZ_TOK_EOF) {
-			p->curline += quartzI_countLines(p->curToken.s, p->curToken.len);
-		}
+	while(1) {
 		p->off += p->curToken.len;
 		quartz_TokenError e = quartzI_lexAt(p->s, p->off, &p->curToken);
 		if(e) {
@@ -115,12 +113,16 @@ static quartz_Errno quartzP_consume(quartz_Parser *p) {
 			p->errloc = p->curline;
 			return QUARTZ_ESYNTAX;
 		}
-	} while(quartzP_mustSkipToken(&p->curToken));
+		if(quartzP_mustSkipToken(&p->curToken)) {
+			p->curline += quartzI_countLines(p->curToken.s, p->curToken.len);
+		} else break;
+	}
 	return QUARTZ_OK;
 }
 
 quartz_Errno quartzP_peekToken(quartz_Parser *p, quartz_Token *t) {
 	if(p->curToken.tt == QUARTZ_TOK_EOF) {
+		p->curline += quartzI_countLines(p->curToken.s, p->curToken.len);
 		quartz_Errno err = quartzP_consume(p);
 		if(err) return err;
 	}

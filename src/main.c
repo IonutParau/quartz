@@ -103,34 +103,34 @@ static quartz_Errno repl(quartz_Thread *Q, bool disassemble) {
 		}
 		if(linebuf.len > 0) {
 			err = quartz_pushlstring(Q, linebuf.buf, linebuf.len);
-			if(err) return err;
+			if(err) goto repl_fail;
 			err = quartz_pushscriptx(Q, -1, chunkname, globals, sharedModule);
-			if(err) {
-				err = quartz_pusherror(Q);
-				if(err) return err;
-				err = quartz_cast(Q, -1, QUARTZ_TSTR);
-				if(err) return err;
-				const char *s = quartz_tostring(Q, -1, &err);
-				if(err) return err;
-				printf("Error: %s\n", s);
-				quartz_clearerror(Q);
+			if(err) goto repl_fail;
+			if(disassemble) {
+				quartz_bufreset(&linebuf);
+				err = quartz_disassemble(Q, -1, &linebuf);
+				if(err) goto repl_fail;
+				err = quartz_pop(Q);
+				if(err) goto repl_fail;
+				fwrite(linebuf.buf, sizeof(char), linebuf.len, stdout);
+				fflush(stdout);
 			} else {
-				if(disassemble) {
-					quartz_bufreset(&linebuf);
-					err = quartz_disassemble(Q, -1, &linebuf);
-					if(err) return err;
-					err = quartz_pop(Q);
-					if(err) return err;
-					fwrite(linebuf.buf, sizeof(char), linebuf.len, stdout);
-					fflush(stdout);
-				} else {
-					err = quartz_pushstring(Q, src);
-					if(err) return err;
-					// not protected, L
-					err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
-					if(err) return err;
-				}
+				err = quartz_pushstring(Q, src);
+				if(err) goto repl_fail;
+				// not protected, L
+				err = quartz_call(Q, 1, QUARTZ_CALL_STATIC);
+				if(err) goto repl_fail;
 			}
+			continue;
+repl_fail:
+			err = quartz_pusherror(Q);
+			if(err) return err;
+			err = quartz_cast(Q, -1, QUARTZ_TSTR);
+			if(err) return err;
+			const char *s = quartz_tostring(Q, -1, &err);
+			if(err) return err;
+			printf("Error: %s\n", s);
+			quartz_clearerror(Q);
 		}
 	}
 	return QUARTZ_OK; // trust

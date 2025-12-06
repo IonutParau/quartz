@@ -41,7 +41,7 @@ extern const char *quartz_typenames[QUARTZ_TCOUNT];
 typedef struct quartz_Thread quartz_Thread;
 
 #ifndef QUARTZ_MAX_STACK
-#define QUARTZ_MAX_STACK 65536
+#define QUARTZ_MAX_STACK 2048
 #endif
 
 typedef enum quartz_Errno {

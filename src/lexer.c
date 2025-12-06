@@ -198,6 +198,6 @@ quartz_TokenError quartzI_lexAt(const char *fullS, size_t off, quartz_Token *t) 
 size_t quartzI_countLines(const char *s, size_t off) {
 	size_t l = 0;
 	// C is beautiful
-	for(size_t i = 0; i <= off; i++) if(s[i] == '\n') l++;
+	for(size_t i = 0; i < off; i++) if(s[i] == '\n') l++;
 	return l;
 }
