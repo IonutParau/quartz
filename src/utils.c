@@ -47,6 +47,13 @@ bool quartzI_streqlc(const char *a, const char *b) {
 	}
 }
 
+bool quartzI_isLittleEndian() {
+	union {int x; short y;} z;
+	z.x = 1;
+
+	return z.y == z.x;
+}
+
 size_t quartzI_trueStringLen(const char *literal, size_t len) {
 	size_t counted = 0;
 	// TODO: eventually we'll have raw string literals, which don't support this

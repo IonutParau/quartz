@@ -19,6 +19,8 @@ bool quartzI_strleql(const char *a, size_t alen, const char *b, size_t blen);
 bool quartzI_strleqlc(const char *a, size_t alen, const char *b);
 bool quartzI_streqlc(const char *a, const char *b);
 
+bool quartzI_isLittleEndian();
+
 // this is how string literals are processed
 size_t quartzI_trueStringLen(const char *literal, size_t len);
 void quartzI_trueStringWrite(char *buf, const char *literal, size_t len);
