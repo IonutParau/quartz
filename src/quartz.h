@@ -325,6 +325,7 @@ quartz_Errno quartz_openlibfs(quartz_Thread *Q);
 quartz_Errno quartz_openlibos(quartz_Thread *Q);
 quartz_Errno quartz_openlibgc(quartz_Thread *Q);
 quartz_Errno quartz_openlibvm(quartz_Thread *Q);
+quartz_Errno quartz_openlibstr(quartz_Thread *Q);
 quartz_Errno quartz_openlibbuf(quartz_Thread *Q);
 
 // The current managed memory usage

@@ -22,4 +22,5 @@
 #include "libos.c"
 #include "libgc.c"
 #include "libvm.c"
+#include "libstr.c"
 #include "libbuf.c"
