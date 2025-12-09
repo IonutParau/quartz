@@ -46,7 +46,7 @@ static quartz_Errno quartz_libstr_slice(quartz_Thread *Q, size_t argc) {
 		return quartz_return(Q, -1);
 	}
 
-	err = quartz_pushlstring(Q, s + start, end - start + 1);
+	err = quartz_pushlstring(Q, s + start, end - start);
 	if(err) return err;
 	return quartz_return(Q, -1);
 }

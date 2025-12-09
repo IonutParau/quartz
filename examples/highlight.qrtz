@@ -1,0 +1,235 @@
+# quartz highlight script
+# it currently is incomplete and does a lot of shortcuts,
+# being more of a PoC
+
+# read file
+
+if len(argv) <= 1 {
+	io.writeln("Usage: ", argv[0], " <filename>")
+}
+
+local filename = argv[1]
+local file = fs.open(filename, "r")
+
+local data = ""
+local chunk = ""
+
+while chunk {
+	chunk = fs.read(file, 16384)
+	if chunk {
+		data = data .. chunk
+	}
+}
+
+local reset = "\e[0m"
+
+local numColor = 32
+local strColor = 33
+local keyColor = 34
+local identColor = 35
+local symColor = 31
+local comColor = 30
+
+local keywords = [
+	"local",
+	"global",
+	"fun",
+	"return",
+	"if",
+	"else",
+	"do",
+	"while",
+	"for",
+	"in",
+	"and",
+	"or",
+	"not",
+	"break",
+	"continue",
+	"null",
+	"true",
+	"false",
+]
+
+local symbols = [
+	"<<<",
+	">>>",
+	"...",
+	"==",
+	"!=",
+	"<=",
+	">=",
+	"<<",
+	">>",
+	"#(",
+	"#[",
+	"#{",
+	"**",
+	"..",
+	"//",
+	"+",
+	"-",
+	"*",
+	"/",
+	"%",
+	"~",
+	"^",
+	"&",
+	"|",
+	"=",
+	">",
+	"<",
+	",",
+	".",
+	":",
+	";",
+	"(",
+	")",
+	"[",
+	"]",
+	"{",
+	"}",
+]
+
+local printColored = fun(text, color) {
+	io.write("\e[", color, "m", text, reset)
+}
+
+# when this was written, there were no struct, but there is only
+# ever one token, so we use this trick instead
+local tokLen
+local tokColor
+
+local isWhite = fun(c) {
+	if c == "" { return false }
+	return str.find(" \n\t\r", c) != null
+}
+
+local isIdent = fun(c) {
+	if c == "" { return false }
+	return str.find("_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c) != null
+}
+
+local isBase = fun(c, n) {
+	local low = str.slice("0123456789abcdef", 0, n)
+	local high = str.slice("0123456789ABCDEF", 0, n)
+
+	if str.find(low, c) { return true }
+	if str.find(high, c) { return true }
+	return false
+}
+
+local lexAt = fun(text, i) {
+	if i >= str.len(text) {
+		tokLen = 0
+		tokColor = 0
+		return
+	}
+
+	# we return by global here
+	tokLen = 0
+	tokColor = 0
+
+	local c = str.slice(text, i, i+1)
+
+	if isWhite(c) {
+		while isWhite(c) {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		tokLen = tokLen - 1
+		return
+	}
+
+	for _, sym in symbols {
+		local chunk = str.slice(text, i, i + str.len(sym))
+		if chunk == sym {
+			tokLen = str.len(sym)
+			tokColor = symColor
+			return
+		}
+	}
+
+	if c == '#' {
+		local inCom = true
+		while inCom {
+			c = str.slice(text, i + tokLen, i + tokLen + 1)
+			if c == "" {
+				inCom = false
+			} else if c == "\n" {
+				inCom = false
+			}
+			tokLen = tokLen + 1
+		}
+		tokColor = comColor
+		return
+	}
+	
+	if str.find("'" .. '"', c) {
+		tokLen = 1
+		local e = c
+		c = ""
+		while c != e {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		tokColor = strColor
+		return
+	}
+
+	if isBase(c, 10) {
+		# very simplified
+		while isBase(c, 10) {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		tokLen = tokLen - 1
+		tokColor = numColor
+		if c == '.' {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		while isBase(c, 10) {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		if c == 'e' {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		while isBase(c, 10) {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		return
+	}
+	
+	if isIdent(c) {
+		while isIdent(c) {
+			tokLen = tokLen + 1
+			c = str.slice(text, i + tokLen - 1, i + tokLen)
+		}
+		tokLen = tokLen - 1
+		tokColor = identColor
+		local data = str.slice(text, i, i + tokLen)
+		for _, kw in keywords {
+			if kw == data {
+				tokColor = keyColor
+			}
+		}
+		return
+	}
+	
+	tokLen = 1
+}
+
+local i = 0
+
+while i < str.len(data) {
+	lexAt(data, i)
+
+	printColored(str.slice(data, i, i + tokLen), tokColor)
+	i = i + tokLen
+}
+
+io.flush()
