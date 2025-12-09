@@ -5,7 +5,9 @@
 #include "quartz.h"
 #include "platform.h"
 
+#ifndef QUARTZ_EXT_LIB
 #include "one.c"
+#endif
 
 #ifdef QUARTZ_POSIX
 #include <unistd.h>

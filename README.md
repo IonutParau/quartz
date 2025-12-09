@@ -31,7 +31,7 @@ Makefile is WIP
 ## Manually
 
 The library can be compiled by compiling `src/one.c`. It `#include`s every other source file.
-The interperter can be compiled by compiling `src/main.c`. It includes `one.c`, and defines `QUARTZ_USE_LIBC`, thus it does depend on `malloc` and `stdio.h`.
+The interperter can be compiled by compiling `src/main.c`. It includes `one.c`, unless `QUARTZ_EXT_LIB` is defined.
 Since `math.h` is used, some compiles may need you to link in `libm` via `-lm`.
 
 An example build command for the library is:
