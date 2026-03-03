@@ -1,5 +1,5 @@
-#ifndef QUARTZ_VAL
-#define QUARTZ_VAL
+#ifndef QUARTZ_COMMON
+#define QUARTZ_COMMON
 
 #ifndef QUARTZ_CHARBITS
 #ifdef __CHAR_BIT__

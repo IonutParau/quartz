@@ -16,7 +16,7 @@ size_t qrtz_strlen(const char *s) {
 
 char *qrtz_strdup(qrtz_Context *ctx, const char *s) {
 	size_t len = qrtz_strlen(s);
-	char *n = qrtz_alloc(ctx, len + 1);
+	char *n = qrtz_calloc(ctx, len + 1);
 	if(n == NULL) return NULL;
 	qrtz_memcpy(n, s, len);
 	n[len] = '\0';
@@ -25,7 +25,7 @@ char *qrtz_strdup(qrtz_Context *ctx, const char *s) {
 
 void qrtz_strfree(qrtz_Context *ctx, char *s) {
 	size_t len = qrtz_strlen(s);
-	qrtz_free(ctx, s, len + 1);
+	qrtz_cfree(ctx, s, len + 1);
 }
 
 void qrtz_memcpy(void *dest, const void *src, size_t len) {
@@ -65,31 +65,31 @@ bool qrtz_sizeOverflows(size_t a, size_t b) {
 	return a > (SIZE_MAX/b);
 }
 
-void *qrtz_alloc(qrtz_Context *ctx, size_t len) {
+void *qrtz_calloc(qrtz_Context *ctx, size_t len) {
 	if(len == 0) return ctx->alloc;
 	return ctx->alloc(ctx->data, NULL, 0, len);
 }
 
-void *qrtz_allocArray(qrtz_Context *ctx, size_t len, size_t count) {
+void *qrtz_callocArray(qrtz_Context *ctx, size_t len, size_t count) {
 	if(qrtz_sizeOverflows(len, count)) return NULL;
-	return qrtz_alloc(ctx, len * count);
+	return qrtz_calloc(ctx, len * count);
 }
 
-void qrtz_free(qrtz_Context *ctx, void *memory, size_t len) {
+void qrtz_cfree(qrtz_Context *ctx, void *memory, size_t len) {
 	if(memory == ctx->alloc) return;
 	if(memory == NULL) return;
 	(void)ctx->alloc(ctx->data, memory, len, 0);
 }
 
-void qrtz_freeArray(qrtz_Context *ctx, void *memory, size_t len, size_t count) {
-	return qrtz_free(ctx, memory, len * count);
+void qrtz_cfreeArray(qrtz_Context *ctx, void *memory, size_t len, size_t count) {
+	return qrtz_cfree(ctx, memory, len * count);
 }
 
-void *qrtz_realloc(qrtz_Context *ctx, void *memory, size_t len, size_t oldCount, size_t newCount) {
+void *qrtz_crealloc(qrtz_Context *ctx, void *memory, size_t len, size_t oldCount, size_t newCount) {
 	if(qrtz_sizeOverflows(len, newCount)) return NULL;
 	size_t oldSize = len * oldCount;
 	size_t newSize = len * newCount;
-	if(memory == ctx->alloc) return qrtz_alloc(ctx, newSize);
+	if(memory == ctx->alloc) return qrtz_calloc(ctx, newSize);
 	return ctx->alloc(ctx->data, memory, oldSize, newSize);
 }
 
@@ -101,11 +101,11 @@ void qrtz_initBuf(qrtz_Buffer *buf, qrtz_Context *ctx) {
 }
 
 void qrtz_freeBuf(qrtz_Buffer *buf) {
-	qrtz_freeArray(buf->ctx, buf->buf, sizeof(char), buf->cap);
+	qrtz_cfreeArray(buf->ctx, buf->buf, sizeof(char), buf->cap);
 }
 
 qrtz_Exit qrtz_initBufCap(qrtz_Buffer *buf, qrtz_Context *ctx, size_t cap) {
-	char *mem = qrtz_allocArray(ctx, sizeof(char), cap);
+	char *mem = qrtz_callocArray(ctx, sizeof(char), cap);
 	if(mem == NULL) return QRTZ_ENOMEM;
 	buf->ctx = ctx;
 	buf->buf = mem;
@@ -126,7 +126,7 @@ char *qrtz_reserveBuf(qrtz_Buffer *buf, size_t amount) {
 	size_t capNeeded = buf->cap;
 	while(capNeeded < needed) capNeeded *= 2;
 	if(capNeeded > buf->cap) {
-		char *newMem = qrtz_realloc(buf->ctx, buf->buf, sizeof(char), buf->cap, capNeeded);
+		char *newMem = qrtz_crealloc(buf->ctx, buf->buf, sizeof(char), buf->cap, capNeeded);
 		if(newMem == NULL) return NULL;
 		buf->buf = newMem;
 		buf->cap = capNeeded;
@@ -152,9 +152,26 @@ qrtz_Exit qrtz_putcn(qrtz_Buffer *buf, char c, size_t rep) {
 }
 
 qrtz_Exit qrtz_puts(qrtz_Buffer *buf, const char *s) {
-
+	size_t len = qrtz_strlen(s);
+	return qrtz_putls(buf, s, len);
 }
 
-qrtz_Exit qrtz_putls(qrtz_Buffer *buf, const char *s, size_t len);
-qrtz_Exit qrtz_putf(qrtz_Buffer *buf, const char *fmt, ...);
-qrtz_Exit qrtz_vputf(qrtz_Buffer *buf, const char *fmt, va_list args);
+qrtz_Exit qrtz_putls(qrtz_Buffer *buf, const char *s, size_t len) {
+	char *mem = qrtz_reserveBuf(buf, len);
+	if(mem == NULL) return QRTZ_ENOMEM;
+	qrtz_memcpy(mem, s, len);
+	return QRTZ_OK;
+}
+
+qrtz_Exit qrtz_putf(qrtz_Buffer *buf, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	qrtz_Exit err = qrtz_vputf(buf, fmt, args);
+	va_end(args);
+	return err;
+}
+
+qrtz_Exit qrtz_vputf(qrtz_Buffer *buf, const char *fmt, va_list args) {
+	// TODO: use stb snprintf
+	return QRTZ_OK;
+}

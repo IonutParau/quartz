@@ -86,6 +86,14 @@ typedef struct qrtz_Pointer {
 	qrtz_Value val;
 } qrtz_Pointer;
 
+typedef struct qrtz_Userdata {
+	qrtz_Object obj;
+	char *typestr;
+	void *pointer;
+	size_t associatedLen;
+	qrtz_Value associated[];
+} qrtz_Userdata;
+
 typedef struct qrtz_CallEntry {
 	int stacktop;
 	bool isC;
@@ -105,9 +113,10 @@ typedef struct qrtz_Task {
 	// the one we are waiting for. NULL means we are not waiting for anyone.
 	struct qrtz_Task *waitingFor;
 	// the one waiting for us. NULL means no one is waiting for us.
-	struct qrtz_Task *waitedFor;
+	struct qrtz_Task *waitedBy;
 	double deadline;
 	size_t checkcounter;
+	// if 0, deadlines are disabled
 	size_t checkinterval;
 } qrtz_Task;
 
@@ -176,6 +185,13 @@ typedef struct qrtz_VM {
 	// Current task. Shortcut to not have to traverse the waitingFor chain every time.
 	qrtz_Task *curTask;
 } qrtz_VM;
+
+qrtz_Object *qrtz_allocObject(qrtz_VM *vm, qrtz_ObjTag tag, size_t objSize);
+qrtz_String *qrtz_allocStringObject(qrtz_VM *vm, const char *data, size_t len);
+qrtz_Array *qrtz_allocArrayObject(qrtz_VM *vm, size_t cap);
+qrtz_Map *qrtz_allocMapObject(qrtz_VM *vm, size_t cap);
+qrtz_Pointer *qrtz_allocPointerObject(qrtz_VM *vm);
+qrtz_Task *qrtz_allocTaskObject(qrtz_VM *vm, qrtz_Map *globals);
 
 size_t qrtz_objmemsizeof(qrtz_Object *obj);
 size_t qrtz_strhash(const char *s, size_t len);

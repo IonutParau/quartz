@@ -124,15 +124,26 @@ typedef struct qrtz_Buffer {
 } qrtz_Buffer;
 
 // allocate an object
-void *qrtz_alloc(qrtz_Context *ctx, size_t len);
+void *qrtz_calloc(qrtz_Context *ctx, size_t len);
 // allocate an array of objects
-void *qrtz_allocArray(qrtz_Context *ctx, size_t len, size_t count);
+void *qrtz_callocArray(qrtz_Context *ctx, size_t len, size_t count);
 // free an object
-void qrtz_free(qrtz_Context *ctx, void *memory, size_t len);
+void qrtz_cfree(qrtz_Context *ctx, void *memory, size_t len);
 // free an array of objects
-void qrtz_freeArray(qrtz_Context *ctx, void *memory, size_t len, size_t count);
+void qrtz_cfreeArray(qrtz_Context *ctx, void *memory, size_t len, size_t count);
 // reallocate an array of objects
-void *qrtz_realloc(qrtz_Context *ctx, void *memory, size_t len, size_t oldCount, size_t newCount);
+void *qrtz_crealloc(qrtz_Context *ctx, void *memory, size_t len, size_t oldCount, size_t newCount);
+
+// allocate an object for a VM
+void *qrtz_alloc(qrtz_VM *vm, size_t len);
+// allocate an array of objects
+void *qrtz_allocArray(qrtz_VM *vm, size_t len, size_t count);
+// free an object
+void qrtz_free(qrtz_VM *vm, void *memory, size_t len);
+// free an array of objects
+void qrtz_freeArray(qrtz_VM *vm, void *memory, size_t len, size_t count);
+// reallocate an array of objects
+void *qrtz_realloc(qrtz_VM *vm, void *memory, size_t len, size_t oldCount, size_t newCount);
 
 // initializes a buffer as an empty buffer.
 // This does 0 allocations.
