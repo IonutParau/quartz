@@ -1,0 +1,5 @@
+local io = import("stdio")
+
+main() {
+	io.writeln("Hello, world!")
+}
