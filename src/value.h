@@ -135,8 +135,7 @@ typedef struct qrtz_Program {
 	qrtz_Object obj;
 	qrtz_Map *globals;
 	qrtz_String *name;
-	size_t entryUsed;
-	size_t entryCap;
+	size_t entryCount;
 	qrtz_ProgramEntry *entries;
 	size_t localCount;
 	// Similar to stack entries, VILLEGAL means pointer to value.
@@ -155,7 +154,13 @@ typedef struct qrtz_Instruction {
 		unsigned short uD;
 		short sD;
 	};
+	size_t line;
 } qrtz_Instruction;
+
+typedef struct qrtz_RecordType {
+	qrtz_Object obj;
+	qrtz_String *name;
+} qrtz_RecordType;
 
 typedef struct qrtz_Function {
 	qrtz_Object obj;
@@ -199,8 +204,13 @@ qrtz_Map *qrtz_allocMapObject(qrtz_VM *vm, size_t cap);
 qrtz_Pointer *qrtz_allocPointerObject(qrtz_VM *vm);
 qrtz_Task *qrtz_allocTaskObject(qrtz_VM *vm, qrtz_Map *globals);
 
+qrtz_String *qrtz_allocCStringObject(qrtz_VM *vm, const char *s);
+qrtz_String *qrtz_allocFStringObject(qrtz_VM *vm, const char *fmt, ...);
+qrtz_String *qrtz_vallocFStringObject(qrtz_VM *vm, const char *fmt, va_list args); 
+
 size_t qrtz_objmemsizeof(qrtz_Object *obj);
 size_t qrtz_strhash(const char *s, size_t len);
 size_t qrtz_valhash(qrtz_Value val);
+qrtz_String *qrtz_toStringObject(qrtz_VM *vm, qrtz_Value val);
 
 #endif

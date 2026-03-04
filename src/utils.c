@@ -3,6 +3,9 @@
 #include "quartz.h"
 #include "common.h"
 
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
+
 #ifndef QUARTZ_NOLIBC
 #include <stdlib.h>
 #include <stdio.h>

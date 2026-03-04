@@ -182,6 +182,8 @@ qrtz_Exit qrtz_pushint(qrtz_VM *vm, intptr_t n);
 qrtz_Exit qrtz_pushnumber(qrtz_VM *vm, double n);
 qrtz_Exit qrtz_pushstring(qrtz_VM *vm, const char *str);
 qrtz_Exit qrtz_pushlstring(qrtz_VM *vm, const char *str, size_t len);
+qrtz_Exit qrtz_pushfstring(qrtz_VM *vm, const char *fmt, ...);
+qrtz_Exit qrtz_vpushfstring(qrtz_VM *vm, const char *fmt, va_list args); 
 qrtz_Exit qrtz_pushglobal(qrtz_VM *vm, const char *name);
 qrtz_Exit qrtz_pushcfunction(qrtz_VM *vm, qrtz_CFunction *f);
 // pushes a C closure with a certain amount of upvalues available.

@@ -2,6 +2,7 @@
 #include "common.h"
 #include "value.h"
 #include <math.h>
+#include "stb_sprintf.h"
 
 void *qrtz_alloc(qrtz_VM *vm, size_t len) {
 	vm->memUsage += len;
@@ -194,6 +195,28 @@ qrtz_Context *qrtz_contextOf(qrtz_VM *vm) {
 	return &vm->ctx;
 }
 
+qrtz_String *qrtz_allocCStringObject(qrtz_VM *vm, const char *s) {
+	return qrtz_allocStringObject(vm, s, qrtz_strlen(s));
+}
+
+qrtz_String *qrtz_allocFStringObject(qrtz_VM *vm, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	qrtz_String *s = qrtz_vallocFStringObject(vm, fmt, args);
+	va_end(args);
+	return s;
+}
+
+qrtz_String *qrtz_vallocFStringObject(qrtz_VM *vm, const char *fmt, va_list args) {
+	int n = stbsp_vsnprintf(NULL, 0, fmt, args);
+	if(n < 0) return NULL;
+	qrtz_String *s = qrtz_allocStringObject(vm, NULL, n);
+	if(s == NULL) return NULL;
+	stbsp_vsprintf(s->data, fmt, args);
+	s->hash = qrtz_strhash(s->data, s->len);
+	return s;
+}
+
 size_t qrtz_objmemsizeof(qrtz_Object *obj);
 
 size_t qrtz_strhash(const char *s, size_t len) {
@@ -226,6 +249,64 @@ size_t qrtz_valhash(qrtz_Value val) {
 		return ((qrtz_String *)o)->hash;
 	}
 	return (size_t)o;
+}
+
+qrtz_String *qrtz_toStringObject(qrtz_VM *vm, qrtz_Value val) {
+	if(val.tag == QRTZ_VNULL) return qrtz_allocCStringObject(vm, "null");
+	if(val.tag == QRTZ_VBOOL) return qrtz_allocCStringObject(vm, val.boolean ? "true" : "false");
+	if(val.tag == QRTZ_VINT) {
+		return qrtz_allocFStringObject(vm, "%zd", val.integer);
+	}
+	if(val.tag == QRTZ_VNUMBER) {
+		return qrtz_allocFStringObject(vm, "%f", val.number);
+	}
+	if(val.tag == QRTZ_VCFUNC) {
+		return qrtz_allocFStringObject(vm, "<function at %p>", val.cfunc);
+	}
+	if(val.tag != QRTZ_VOBJ) return NULL;
+	qrtz_Object *o = val.object;
+	if(o->tag == QRTZ_OSTR) {
+		return (qrtz_String *)o;
+	}
+	const char *ty = "object";
+	switch(o->tag) {
+	case QRTZ_OSTR:
+		return NULL;
+	case QRTZ_OARRAY:
+		ty = "array";
+		break;
+	case QRTZ_OMAP:
+		ty = "map";
+		break;
+	case QRTZ_OPOINTER:
+		ty = "pointer";
+		break;
+	case QRTZ_OTASK:
+		ty = "task";
+		break;
+	case QRTZ_OCLOSURE:
+		ty = "function";
+		break;
+	case QRTZ_OFUNCTION:
+		ty = "function";
+		break;
+	case QRTZ_OUSERDATA:
+		ty = "userdata";
+		break;
+	case QRTZ_OPROGRAM:
+		ty = "program";
+		break;
+	case QRTZ_ORECTYPE:
+		ty = "type";
+		break;
+	case QRTZ_ORECOPT:
+		ty = "type";
+		break;
+	case QRTZ_ORECORD:
+		ty = "record";
+		break;
+	}
+	return qrtz_allocFStringObject(vm, "<%s at %p>", ty, val.object);
 }
 
 bool qrtz_hasError(qrtz_VM *vm) {
@@ -270,7 +351,7 @@ void qrtz_seterroras(qrtz_VM *vm, qrtz_Exit exit) {
 		return;
 	}
 
-	qrtz_String *s = qrtz_allocStringObject(vm, msg, qrtz_strlen(msg));
+	qrtz_String *s = qrtz_allocCStringObject(vm, msg);
 	if(s == NULL) {
 		qrtz_setoom(vm);
 		return;
