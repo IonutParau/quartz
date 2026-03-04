@@ -14,6 +14,8 @@ typedef enum qrtz_ValTag : char {
 	QRTZ_VINT,
 	// number
 	QRTZ_VNUMBER,
+	// bool
+	QRTZ_VBOOL,
 	// c function
 	QRTZ_VCFUNC,
 	// pointer to object
@@ -118,6 +120,8 @@ typedef struct qrtz_Task {
 	size_t checkcounter;
 	// if 0, deadlines are disabled
 	size_t checkinterval;
+	// VILLEGAL for no error. Yes, null can be an error.
+	qrtz_Value error;
 } qrtz_Task;
 
 typedef struct qrtz_ProgramEntry {
@@ -184,6 +188,8 @@ typedef struct qrtz_VM {
 	qrtz_Task *mainTask;
 	// Current task. Shortcut to not have to traverse the waitingFor chain every time.
 	qrtz_Task *curTask;
+	// the out of memory error object
+	qrtz_String *oomStr;
 } qrtz_VM;
 
 qrtz_Object *qrtz_allocObject(qrtz_VM *vm, qrtz_ObjTag tag, size_t objSize);

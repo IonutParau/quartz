@@ -265,6 +265,22 @@ qrtz_Exit qrtz_rotateright(qrtz_VM *vm, size_t n, size_t amount);
 // set a value as the return value
 qrtz_Exit qrtz_return(qrtz_VM *vm, int idx);
 
+// error handling
+
+// check if there is an error in the current task
+bool qrtz_hasError(qrtz_VM *vm);
+// push the error of the current task
+qrtz_Exit qrtz_pusherror(qrtz_VM *vm);
+// push the global OOM error
+qrtz_Exit qrtz_pushoom(qrtz_VM *vm);
+// set an error
+qrtz_Exit qrtz_seterror(qrtz_VM *vm, int x);
+// set the error to the OOM object
+void qrtz_setoom(qrtz_VM *vm);
+void qrtz_clearerror(qrtz_VM *vm);
+// sets the error as another error message, or fails and sets to OOM.
+void qrtz_seterroras(qrtz_VM *vm, qrtz_Exit exit);
+
 qrtz_Exit qrtz_getKey(qrtz_VM *vm, int container, int key);
 qrtz_Exit qrtz_setKey(qrtz_VM *vm, int container, int key, int val);
 qrtz_Exit qrtz_getField(qrtz_VM *vm, int container, const char *name);
@@ -323,7 +339,7 @@ qrtz_Exit qrtz_openstdio(qrtz_VM *vm);
 qrtz_Exit qrtz_opentasks(qrtz_VM *vm);
 // Loads the strings module
 qrtz_Exit qrtz_openstrings(qrtz_VM *vm);
-// Loads the math module. Does nothing if QUARTZ_NOLIBM is defined.
+// Loads the math module
 qrtz_Exit qrtz_openmath(qrtz_VM *vm);
 // Loads the buffers module.
 qrtz_Exit qrtz_openbuffers(qrtz_VM *vm);

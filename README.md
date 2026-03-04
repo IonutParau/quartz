@@ -13,8 +13,7 @@ replacing it with one that does nothing.
 
 Even without libc, you will still need:
 - `stdint.h`, for `intptr_t`.
-- `math.h`, for trig functions. It is possible to compile out the math module which depends on this with `-DQUARTZ_NOLIBM`,
-but this will leave the language incomplete.
+- `math.h`, for trig functions and float type checks.
 - `stddef.h`, for `NULL` and `size_t`.
 - `limits.h`, for a bunch of numerical limits to check for overflows.
 - `stdbool.h`, for `bool`, `true` and `false`.

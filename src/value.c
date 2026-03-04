@@ -1,6 +1,7 @@
 #include "quartz.h"
 #include "common.h"
 #include "value.h"
+#include <math.h>
 
 void *qrtz_alloc(qrtz_VM *vm, size_t len) {
 	vm->memUsage += len;
@@ -112,6 +113,7 @@ qrtz_Task *qrtz_allocTaskObject(qrtz_VM *vm, qrtz_Map *globals) {
 	t->deadline = 0;
 	t->checkcounter = 0;
 	t->checkinterval = 0;
+	t->error.tag = QRTZ_VILLEGAL;
 	return t;
 }
 
@@ -165,6 +167,9 @@ qrtz_VM *qrtz_create(qrtz_Context *ctx) {
 	vm->mainTask = qrtz_allocTaskObject(vm, vm->globals);
 	if(vm->mainTask == NULL) goto fail;
 	vm->curTask = vm->mainTask;
+	const char *oom = "out of memory";
+	vm->oomStr = qrtz_allocStringObject(vm, oom, qrtz_strlen(oom));
+	if(vm->oomStr == NULL) goto fail;
 
 	return vm;
 fail:
@@ -205,4 +210,73 @@ size_t qrtz_strhash(const char *s, size_t len) {
 	return hash;
 }
 
-size_t qrtz_valhash(qrtz_Value val);
+size_t qrtz_valhash(qrtz_Value val) {
+	if(val.tag == QRTZ_VNULL) return 0;
+	if(val.tag == QRTZ_VBOOL) return val.boolean ? 1 : 0;
+	if(val.tag == QRTZ_VINT) return val.integer;
+	if(val.tag == QRTZ_VNUMBER) {
+		if(isnan(val.number)) return 0;
+		if(isinf(val.number)) return 0;
+		return val.number;
+	}
+	if(val.tag == QRTZ_VCFUNC) return (size_t)val.cfunc;
+	if(val.tag != QRTZ_VOBJ) return 0;
+	qrtz_Object *o = val.object;
+	if(o->tag != QRTZ_OSTR) {
+		return ((qrtz_String *)o)->hash;
+	}
+	return (size_t)o;
+}
+
+bool qrtz_hasError(qrtz_VM *vm) {
+	return vm->curTask->error.tag != QRTZ_VILLEGAL;
+}
+
+qrtz_Exit qrtz_pusherror(qrtz_VM *vm);
+qrtz_Exit qrtz_pushoom(qrtz_VM *vm);
+qrtz_Exit qrtz_seterror(qrtz_VM *vm, int x);
+
+void qrtz_setoom(qrtz_VM *vm) {
+	vm->curTask->error = (qrtz_Value) {
+		.tag = QRTZ_VOBJ,
+		.object = &vm->oomStr->obj,
+	};
+}
+
+void qrtz_clearerror(qrtz_VM *vm) {
+	vm->curTask->error.tag = QRTZ_VILLEGAL;
+}
+
+void qrtz_seterroras(qrtz_VM *vm, qrtz_Exit exit) {
+	const char *msg;
+	switch(exit) {
+	case QRTZ_OK:
+		qrtz_clearerror(vm);
+		return;
+	case QRTZ_ENOMEM:
+		qrtz_setoom(vm);
+		return;
+	case QRTZ_EIO:
+		msg = "bad I/O";
+		return;
+	case QRTZ_ENOSTACK:
+		msg = "stack overflow";
+		return;
+	case QRTZ_ESYNTAX:
+		msg = "syntax error";
+		return;
+	case QRTZ_ERUNTIME:
+		msg = "internal error";
+		return;
+	}
+
+	qrtz_String *s = qrtz_allocStringObject(vm, msg, qrtz_strlen(msg));
+	if(s == NULL) {
+		qrtz_setoom(vm);
+		return;
+	}
+	vm->curTask->error = (qrtz_Value) {
+		.tag = QRTZ_VOBJ,
+		.object = &s->obj,
+	};
+}
